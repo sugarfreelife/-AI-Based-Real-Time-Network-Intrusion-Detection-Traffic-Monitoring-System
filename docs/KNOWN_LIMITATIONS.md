@@ -10,7 +10,7 @@ This list reflects the Step 1 audit and will be updated with evidence as the pro
 | Docker services | BLOCKED in this session | Docker CLI is present, but connection to the Docker Desktop Linux engine returned permission denied for its named pipe. |
 | PostgreSQL | NOT TESTED | `psql` is unavailable and server availability is unknown. Database integration remains unverified until a reachable PostgreSQL service exists. |
 | Dataset and trained model | NOT PROVIDED | No dataset or model was present in the empty workspace. No model metrics or supported attack classes can be claimed until data is acquired and evaluated. |
-| Full NIDS application | INCOMPLETE | Packet ingestion and replay are implemented in Step 2. Flow construction, features, ML, database, API, authentication, WebSockets, and dashboard work remain planned. |
+| Full NIDS application | INCOMPLETE | Packet ingestion, flow construction, and features are implemented through Step 3. Dataset/model, detection, database, API, authentication, WebSockets, and dashboard work remain planned. |
 | Python environment bootstrap | DEGRADED | `python -m venv` failed during `ensurepip` because the base Python launcher reports that it cannot resolve `C:\Python314\python.exe`. The local `.venv` executable can run after pinned packages were installed into its site-packages. |
 
 No packet captures, datasets, credentials, or generated model artifacts should be committed.

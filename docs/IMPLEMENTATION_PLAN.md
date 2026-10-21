@@ -6,7 +6,7 @@ The build is limited to 10 steps. Each step should leave a coherent, reviewable 
 |---|---|---|
 | 1. Audit and foundation | Inspect the empty workspace and tools; initialize Git; add safety-oriented ignore rules, environment template, README, architecture outline, progress and limitation records, and this plan. | Audit facts recorded; clean first commit; remote push status recorded. |
 | 2. Packet ingestion | Add packet metadata types, Scapy parsing, offline PCAP/PCAPNG replay, capture statistics, CLI, and controlled packet tests. Keep live capture optional and authorized. | PASS: parser and replay tests pass; CLI help works; live-capture constraints documented. |
-| 3. Flows and features | Add deterministic bidirectional flow construction, expiration, a versioned feature schema, validation, and unit tests. | Reverse packets share a flow; feature ordering and calculations are tested. |
+| 3. Flows and features | Add deterministic bidirectional flow construction, expiration, a versioned feature schema, validation, and unit tests. | PASS: reverse packets share a flow; timeout, bounds, feature ordering, ranges, and calculations are tested. |
 | 4. Dataset and training | Add provenance-aware dataset preparation, leakage checks, reproducible splits, baseline and Random Forest training, evaluation, and artifact metadata. | Small fixture tests pass; real metrics appear only after a documented dataset evaluation. |
 | 5. Inference and alerts | Load trusted model artifacts, validate schema compatibility, connect replay to inference, and create explainable/deduplicated alerts. | Tests cover valid, missing, and incompatible model states and alert rules. |
 | 6. Persistence and REST API | Add PostgreSQL schema/migrations, data services, FastAPI endpoints, validation, pagination, and health reporting. | Migration/API checks pass where database infrastructure permits; blocked checks are explicit. |
@@ -20,4 +20,4 @@ The build is limited to 10 steps. Each step should leave a coherent, reviewable 
 - A step may be narrowed if a verified environment or data blocker prevents safe completion. Record the blocker and finish independent work in that step.
 - Do not expand beyond 10 steps. Keep later work within the closest planned step.
 - Do not download large datasets automatically, capture live traffic without authorization, commit secrets, or invent metrics.
-- The configured GitHub repository URL is required before pushes can be made. Until it is supplied, commits can be created locally and the push status must remain BLOCKED.
+- The user-provided GitHub remote is configured as `origin`; push each completed step before proceeding.

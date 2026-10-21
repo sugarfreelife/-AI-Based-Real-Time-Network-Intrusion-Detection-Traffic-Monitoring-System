@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 2 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, filter replay by protocol, and optionally capture from an explicitly selected interface when the host supports it. Flow processing, machine-learning inference, persistence, API, authentication, WebSockets, and dashboard features are not implemented yet.
+This repository is at Step 3 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, build deterministic bidirectional flows, and extract versioned numeric features. The CLI currently exposes packet replay; flow and feature APIs are available as Python modules. Machine-learning training/inference, persistence, API, authentication, WebSockets, and dashboard features are not implemented yet.
 
 ## Planned technology
 
@@ -37,3 +37,5 @@ python -m nids_engine.replay --live "INTERFACE NAME" --protocol TCP
 ```
 
 Run the packet ingestion tests with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For later services, copy `.env.example` to `.env` and supply local values; never commit `.env`.
+
+The ordered inference inputs and missing-value rules are documented in [docs/FEATURE_SCHEMA.md](docs/FEATURE_SCHEMA.md).

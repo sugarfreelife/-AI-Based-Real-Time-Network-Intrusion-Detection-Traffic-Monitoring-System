@@ -42,7 +42,7 @@ Step 1 commit `cad3edf` is on GitHub. The next task was Step 2 (packet parsing a
 
 ## Step 2 of 10 — Packet ingestion and replay
 
-**Status:** Implemented and verified locally; commit and push are pending.
+**Status:** Implemented, verified, committed as `5c5530d`, and pushed to `origin/main`.
 
 ### Delivered
 
@@ -66,4 +66,29 @@ Step 1 commit `cad3edf` is on GitHub. The next task was Step 2 (packet parsing a
 
 ### Next task
 
-Implement canonical bidirectional flow construction and the shared, versioned feature schema in Step 3.
+Step 2 is complete on GitHub. The next task is Step 3 (bidirectional flows and versioned features).
+
+## Step 3 of 10 — Bidirectional flows and feature schema
+
+**Status:** Implemented and verified locally; commit and push are pending.
+
+### Delivered
+
+- Canonical IPv4/IPv6 endpoint keys and stable directional A-to-B/B-to-A counters.
+- Packet/byte totals, directional size statistics, TCP flag counts, UTC start/last-seen/end timestamps, duration, and finalization reasons.
+- Idle and active timeouts driven by a monotonic event-time watermark, including out-of-order packet timestamps.
+- A maximum active-flow count and a periodically compacted expiration heap to bound retained state.
+- Unkeyable packets become individual flows without fabricated IP/port values.
+- Feature schema version 1.0 with deterministic ordering, rates, protocol one-hot fields, explicit missingness flags, and model-schema compatibility checks.
+- `docs/FEATURE_SCHEMA.md` documents all 32 model inputs and their calculations.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest`: PASS, 25 tests across packet, flow, and feature modules.
+- `.venv\Scripts\python.exe -m compileall -q nids_engine tests`: PASS.
+- `git diff --check`: PASS.
+- Tests cover reverse-direction keying, counters, zero duration, idle/active/capacity finalization, out-of-order timestamps, bounded heap growth, non-IP isolation, deterministic feature ordering, missing values, and incompatible/invalid feature vectors.
+
+### Next task
+
+Add documented dataset handling and a reproducible training/evaluation pipeline in Step 4. Do not report model metrics until a real, provenance-tracked dataset is supplied and evaluated.

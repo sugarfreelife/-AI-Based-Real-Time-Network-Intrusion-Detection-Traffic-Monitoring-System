@@ -18,5 +18,8 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 2 | Python bytecode compilation | PASS via `.venv\Scripts\python.exe -m compileall -q nids_engine tests` |
 | 2 | CLI help and controlled fresh-process replay | PASS |
 | 2 | Live capture | NOT TESTED; Npcap/libpcap support unavailable |
+| 3 | Flow and feature unit suite | PASS, 25 total tests via `.venv\Scripts\python.exe -m pytest` |
+| 3 | Python bytecode compilation | PASS via `.venv\Scripts\python.exe -m compileall -q nids_engine tests` |
+| 3 | Patch whitespace check | PASS via `git diff --check` |
 
 Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.
