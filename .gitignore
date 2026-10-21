@@ -1,0 +1,39 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Local datasets, packet captures, and generated models
+datasets/
+data/local/
+pcaps/*
+!pcaps/README.md
+*.pcap
+*.pcapng
+*.joblib
+*.pkl
+*.pickle
+
+# JavaScript
+node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Logs and editor/OS files
+*.log
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
