@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 1 of a 10-step implementation plan. The initial audit and project documentation are in place. Packet capture, flow processing, machine-learning inference, persistence, API, authentication, WebSockets, and dashboard features are not implemented yet.
+This repository is at Step 2 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, filter replay by protocol, and optionally capture from an explicitly selected interface when the host supports it. Flow processing, machine-learning inference, persistence, API, authentication, WebSockets, and dashboard features are not implemented yet.
 
 ## Planned technology
 
@@ -24,4 +24,16 @@ Use only networks and captures you own or are authorized to analyze. PCAPs, data
 
 ## Setup
 
-The application is not runnable yet. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For future local configuration, copy `.env.example` to `.env` and supply local values; never commit `.env`.
+Install the pinned project dependencies with `python -m pip install -r requirements-dev.lock`. Replay an authorized capture with:
+
+```powershell
+python -m nids_engine.replay --pcap .\path\to\authorized-capture.pcap
+```
+
+The command emits one JSON metadata record per packet and a capture summary. Packet payloads are not emitted or stored. Live capture requires an explicitly selected, authorized interface and host packet-capture support:
+
+```powershell
+python -m nids_engine.replay --live "INTERFACE NAME" --protocol TCP
+```
+
+Run the packet ingestion tests with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For later services, copy `.env.example` to `.env` and supply local values; never commit `.env`.

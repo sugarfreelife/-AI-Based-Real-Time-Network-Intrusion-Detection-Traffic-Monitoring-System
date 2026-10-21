@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the planned architecture. As of Step 1, the repository contains documentation only; none of the processing or application services described below have been implemented.
+The full diagram is the planned architecture. As of Step 2, the packet metadata parser, streaming PCAP/PCAPNG replay, protocol filtering, and optional explicit-interface live capture adapter are implemented. Flow building, ML, persistence, backend, realtime delivery, and dashboard services remain planned.
 
 ## Target data flow
 
@@ -33,3 +33,7 @@ flowchart LR
 ## Failure handling goals
 
 Bound queues and flow state; make replay deterministic; report parser failures; handle missing models without fabricating detections; preserve persisted alerts when WebSocket clients disconnect; and report database unavailability as degraded readiness. These behaviors remain planned until implemented and tested.
+
+## Implemented in Step 2
+
+`nids_engine.packet` maps IPv4/IPv6 TCP, UDP, and ICMP packets (plus unknown/non-IP frames) into timezone-aware metadata. `nids_engine.capture` reads packets incrementally, counts parse/read/filter outcomes, and invokes a callback without retaining the packet list. `nids_engine.replay` exposes the CLI. The optional live adapter requires an explicit interface, uses `store=False`, and does not retain packet payloads. Controlled tests cover parser behavior and replay. Live capture remains unverified because this host lacks detected Npcap/libpcap support.

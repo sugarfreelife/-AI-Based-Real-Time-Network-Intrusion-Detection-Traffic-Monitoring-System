@@ -2,7 +2,7 @@
 
 ## Current result
 
-**NOT TESTED:** No application code or test suite existed at the initial audit. The Python environment reports pytest 9.1.1, with a launcher location warning. No product tests have been added or run as of Step 1.
+Step 1 began with no application code or test suite. Step 2 adds packet ingestion tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
 The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. PostgreSQL integration checks are therefore not yet available.
 
@@ -11,8 +11,12 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | Step | Check | Result |
 |---|---|---|
 | 1 | Repository and runtime audit | PASS, findings recorded in `docs/PROGRESS.md` |
-| 1 | Application test suite | NOT TESTED; no application code or tests exist |
+| 1 | Application test suite | NOT TESTED; no application code or tests existed |
 | 1 | Docker engine | BLOCKED; named-pipe permission denied |
 | 1 | PostgreSQL connection | NOT TESTED; server availability not established |
+| 2 | Packet parser and PCAP/PCAPNG replay | PASS, 12 tests via `.venv\Scripts\python.exe -m pytest` |
+| 2 | Python bytecode compilation | PASS via `.venv\Scripts\python.exe -m compileall -q nids_engine tests` |
+| 2 | CLI help and controlled fresh-process replay | PASS |
+| 2 | Live capture | NOT TESTED; Npcap/libpcap support unavailable |
 
 Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nids-project"
+version = "0.1.0"
+description = "Metadata-only packet ingestion and replay for an academic NIDS project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["scapy==2.8.0"]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1"]
+
+[project.scripts]
+nids-replay = "nids_engine.replay:main"
+
+[tool.setuptools.packages.find]
+include = ["nids_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --basetemp=.pytest-tmp"

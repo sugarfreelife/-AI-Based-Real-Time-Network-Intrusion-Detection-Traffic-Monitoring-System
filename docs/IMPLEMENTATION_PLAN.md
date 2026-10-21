@@ -5,7 +5,7 @@ The build is limited to 10 steps. Each step should leave a coherent, reviewable 
 | Step | Scope | Completion evidence |
 |---|---|---|
 | 1. Audit and foundation | Inspect the empty workspace and tools; initialize Git; add safety-oriented ignore rules, environment template, README, architecture outline, progress and limitation records, and this plan. | Audit facts recorded; clean first commit; remote push status recorded. |
-| 2. Packet ingestion | Add packet metadata types, Scapy parsing, offline PCAP replay, capture statistics, CLI, and controlled packet tests. Keep live capture optional and authorized. | Parser and replay tests pass; CLI help works; live-capture constraints documented. |
+| 2. Packet ingestion | Add packet metadata types, Scapy parsing, offline PCAP/PCAPNG replay, capture statistics, CLI, and controlled packet tests. Keep live capture optional and authorized. | PASS: parser and replay tests pass; CLI help works; live-capture constraints documented. |
 | 3. Flows and features | Add deterministic bidirectional flow construction, expiration, a versioned feature schema, validation, and unit tests. | Reverse packets share a flow; feature ordering and calculations are tested. |
 | 4. Dataset and training | Add provenance-aware dataset preparation, leakage checks, reproducible splits, baseline and Random Forest training, evaluation, and artifact metadata. | Small fixture tests pass; real metrics appear only after a documented dataset evaluation. |
 | 5. Inference and alerts | Load trusted model artifacts, validate schema compatibility, connect replay to inference, and create explainable/deduplicated alerts. | Tests cover valid, missing, and incompatible model states and alert rules. |
