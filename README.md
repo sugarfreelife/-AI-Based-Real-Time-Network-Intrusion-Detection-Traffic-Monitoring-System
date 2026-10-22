@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 5 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, build deterministic bidirectional flows, extract versioned numeric features, prepare labeled feature tables, train/evaluate compatible models, replay traffic through optional inference, and emit explainable alerts. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL persistence, REST APIs, authentication, WebSockets, and the dashboard remain planned.
+This repository is at Step 6 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, and serve paginated REST reads. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. Authentication, WebSockets, and the dashboard remain planned.
 
 ## Planned technology
 
@@ -51,3 +51,5 @@ Run the test suite with `python -m pytest`. Environment findings and current con
 The ordered inference inputs and missing-value rules are documented in [docs/FEATURE_SCHEMA.md](docs/FEATURE_SCHEMA.md).
 
 For labeled capture preparation and training commands, see [ml/data/README.md](ml/data/README.md) and [docs/ML_METHODOLOGY.md](docs/ML_METHODOLOGY.md). Dataset and generated model files are excluded from Git.
+
+For database migrations, run instructions, API filters, and the current local-only security boundary, see [docs/DATABASE.md](docs/DATABASE.md) and [docs/API.md](docs/API.md).

@@ -5,21 +5,30 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nids-project"
 version = "0.1.0"
-description = "Metadata-only packet ingestion and replay for an academic NIDS project"
+description = "Packet processing, ML inference, alert persistence, and REST API for an academic NIDS project"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["scapy==2.8.0"]
 
 [project.optional-dependencies]
-test = ["pytest==9.1.1"]
+test = ["pytest==9.1.1", "httpx2==2.13.0"]
 ml = ["numpy==2.4.5", "pandas==3.0.6", "scikit-learn==1.9.1", "joblib==1.6.0"]
+backend = [
+    "fastapi==0.158.1",
+    "pydantic==2.14.1",
+    "sqlalchemy==2.1.5",
+    "alembic==1.20.0",
+    "psycopg[binary]==3.3.6",
+    "uvicorn==0.54.0",
+]
 
 [project.scripts]
 nids-replay = "nids_engine.replay:main"
 nids-monitor = "nids_engine.monitor:main"
+nids-api = "backend.app.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["nids_engine*", "ml*"]
+include = ["nids_engine*", "ml*", "backend*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

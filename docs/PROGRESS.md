@@ -128,7 +128,7 @@ Step 4 commit `fef5845` was pushed to `origin/main`. Next implement trusted mode
 
 ## Step 5 of 10 — Inference and explainable alerts
 
-**Status:** Implemented and verified locally; commit and push are pending. Real model detections are blocked because no real labeled dataset/model was supplied.
+**Status:** Implemented, verified, committed as `6b25899`, and pushed to `origin/main`. Real model detections are blocked because no real labeled dataset/model was supplied.
 
 ### Delivered
 
@@ -154,4 +154,33 @@ Step 4 commit `fef5845` was pushed to `origin/main`. Next implement trusted mode
 
 ### Next task
 
-After Step 5 is committed and pushed, implement PostgreSQL persistence and a validated REST API in Step 6.
+Step 5 commit `6b25899` was pushed to `origin/main`. Next implement PostgreSQL persistence and a validated REST API in Step 6.
+
+## Step 6 of 10 — Persistence and REST API
+
+**Status:** Implemented and verified locally. PostgreSQL service integration is blocked on this host because no local server is listening on port 5432.
+
+### Delivered
+
+- Added SQLAlchemy 2.1 models for flow records, prediction status/results, and related alerts; timestamps normalize to UTC, capture/flow identity is unique per capture, and indexes support time/protocol/severity/status queries.
+- Added Alembic initial migration, environment configuration, and backend dependency/version locks.
+- Added an atomic ingestion service. `nids_engine.monitor --database-url <URL>` persists each flow, prediction, and alert set in one transaction and stops if the database write fails.
+- Added FastAPI health, paginated flow and alert lists, detail reads, protocol/severity/status/time filters, validated pagination, and consistent 404/422/503 handling.
+- API runner binds to `127.0.0.1` by default. The endpoints are read-only and remain unauthenticated until the planned access-control step.
+- Added `docs/API.md` and `docs/DATABASE.md` with migration, route, query, and local operation instructions.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest` in the approved execution context: PASS, 48 tests. The restricted Windows runner blocks TestClient's local asyncio socketpair; tests pass outside that restriction.
+- `.venv\Scripts\python.exe -m compileall -q backend database ml nids_engine tests`: PASS.
+- Alembic SQLite upgrade to `0001_persistence`: PASS; created `flows`, `predictions`, `alerts`, and `alembic_version`.
+- Alembic `check`: PASS, no schema drift.
+- PostgreSQL offline migration generation: PASS; SQL rendered for all three application tables without connecting to a server.
+- API CLI help and migration history: PASS.
+- API pagination/filter/time validation, missing records, readiness success/degraded response, transactional persistence/rollback, and monitor-to-database-to-API flow: PASS.
+- PostgreSQL service: BLOCKED; no server on localhost:5432 and `psql` is absent. PostgreSQL was not claimed as integration-tested.
+- `git diff --check`: PASS.
+
+### Next task
+
+Next add JWT authentication, password hashing, role enforcement, audit events, and authenticated WebSocket delivery in Step 7.

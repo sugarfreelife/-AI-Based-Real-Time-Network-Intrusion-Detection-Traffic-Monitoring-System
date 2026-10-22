@@ -2,9 +2,9 @@
 
 ## Current result
 
-Step 1 began with no application code or test suite. Steps 2–4 add packet, flow, feature, and dataset/training tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
+Step 1 began with no application code or test suite. Steps 2–6 add packet, flow, feature, dataset/training, inference, persistence, and API tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
-The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. PostgreSQL integration checks are therefore not yet available.
+The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. A local PostgreSQL service is not available; database/API behavior is checked with SQLite, and PostgreSQL integration remains blocked.
 
 ## Verification record
 
@@ -34,9 +34,18 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 5 | Missing, incompatible, and checksum-mismatched model states | PASS; invalid artifacts are not deserialized |
 | 5 | Real model inference and real labeled traffic alerts | BLOCKED; no verified labeled dataset or trained artifact is available |
 | 5 | Installed `nids-monitor` console script | NOT VERIFIED; the partial `.venv` has no `pip` module and the targeted install hit a sandbox temporary-directory permission error; `python -m nids_engine.monitor` is verified |
+| 6 | Full packet/flow/ML/inference/database/API suite | PASS, 48 tests; run in the approved execution context because the restricted runner blocks TestClient's local asyncio socketpair |
+| 6 | Alembic SQLite upgrade and schema-drift check | PASS; `0001_persistence`, no new operations detected |
+| 6 | PostgreSQL offline migration SQL generation | PASS; DDL rendered without a server connection |
+| 6 | REST pagination, filters, validation, and health states | PASS, SQLite TestClient coverage |
+| 6 | Monitor-to-database-to-API persistence | PASS, SQLite integration test |
+| 6 | PostgreSQL server integration | BLOCKED; no local listener on 5432 and `psql` is unavailable |
+| 6 | API CLI help and Alembic history | PASS |
 
 The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 
 Step 5 also uses a synthetic fixture to verify that a trusted pipeline can be loaded and called. It does not establish model quality on real traffic. Heuristic alerts verify rule behavior only; they are review signals, not proof of compromise.
+
+Step 6 database and API checks use temporary SQLite databases. They validate the ORM, migrations, pagination, filtering, and transaction behavior, but do not establish PostgreSQL server connectivity or operational behavior.
 
 Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.

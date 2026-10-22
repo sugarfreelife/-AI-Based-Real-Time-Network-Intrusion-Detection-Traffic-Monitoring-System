@@ -30,6 +30,9 @@ pcaps/*
 *.joblib
 *.pkl
 *.pickle
+*.db
+*.sqlite
+*.sqlite3
 
 # JavaScript
 node_modules/
