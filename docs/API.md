@@ -13,6 +13,8 @@ python -m backend.app.cli --host 127.0.0.1 --port 8000
 
 The API binds to loopback by default. Set `JWT_SECRET_KEY` to a generated value of at least 32 UTF-8 bytes before starting it. Never use a checked-in or shared development key. Interactive OpenAPI docs are at `http://127.0.0.1:8000/docs`.
 
+Browser clients on a separate origin must be listed in `CORS_ORIGINS` as a comma-separated exact-origin allowlist, such as `http://localhost:5173`. Credentials are not enabled for CORS; the dashboard sends bearer tokens in the `Authorization` header and does not use cookies. The Vite development server proxies API and WebSocket traffic, so its default local workflow is same-origin.
+
 For flow ingestion, run the PCAP monitor with the same URL:
 
 ```powershell

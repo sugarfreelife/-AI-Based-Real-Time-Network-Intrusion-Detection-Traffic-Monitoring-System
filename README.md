@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 7 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, serve authenticated REST reads, acknowledge alerts by role, and stream persisted alerts over authenticated WebSockets. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. The dashboard and container deployment remain planned.
+This repository is at Step 8 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, serve authenticated REST reads, acknowledge alerts by role, stream persisted alerts over authenticated WebSockets, and present persisted records in an authenticated dashboard. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. Container deployment and academic handoff remain planned.
 
 ## Planned technology
 
@@ -56,7 +56,15 @@ python -m backend.app.auth_admin --username admin
 python -m backend.app.cli --host 127.0.0.1 --port 8000
 ```
 
-The administrator password is entered with hidden input. Admins can create analyst and viewer accounts through `POST /api/v1/auth/users`. The dashboard and container deployment are planned next. Run the test suite with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). Copy `.env.example` to `.env` for reference and supply real local values through your environment; never commit `.env`.
+The administrator password is entered with hidden input. Admins can create analyst and viewer accounts through `POST /api/v1/auth/users`. Run the dashboard and API in separate terminals after starting the API and applying migrations:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+The Vite development server proxies API and WebSocket requests to `http://127.0.0.1:8000`. For a separately hosted frontend, set `VITE_API_BASE_URL` at build time and configure the API's `CORS_ORIGINS` as a comma-separated allowlist for that frontend origin. Run the Python suite with `python -m pytest` and the dashboard checks with `npm test`, `npm run typecheck`, and `npm run build`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). Copy `.env.example` to `.env` for reference and supply real local values through your environment; never commit `.env`.
 
 The ordered inference inputs and missing-value rules are documented in [docs/FEATURE_SCHEMA.md](docs/FEATURE_SCHEMA.md).
 

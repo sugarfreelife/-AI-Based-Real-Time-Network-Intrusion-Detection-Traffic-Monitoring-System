@@ -247,6 +247,30 @@ def test_api_requires_valid_short_lived_access_token(session_factory) -> None:
     assert client.get("/health/live").status_code == 200
 
 
+def test_dashboard_cors_allows_configured_origin_without_cookies(session_factory) -> None:
+    config = Settings(
+        database_url="sqlite+pysqlite://",
+        jwt_secret_key=TEST_SETTINGS.jwt_secret_key,
+        cors_origins=("http://localhost:5173",),
+    )
+    client = TestClient(create_app(session_factory, config))
+    response = client.options(
+        "/api/v1/alerts",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "access-control-allow-credentials" not in response.headers
+
+    blocked = client.get("/health/live", headers={"Origin": "https://untrusted.example"})
+    assert blocked.status_code == 200
+    assert "access-control-allow-origin" not in blocked.headers
+
+
 def test_login_fails_closed_without_jwt_secret(session_factory) -> None:
     client = TestClient(create_app(session_factory, Settings(database_url="sqlite+pysqlite://")))
     response = client.post("/api/v1/auth/token", json={"username": "nobody", "password": "irrelevant"})

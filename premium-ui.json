@@ -1,0 +1,23 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["frontend/src"],
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Select/Listbox",
+    "Date",
+    "Form",
+    "Scrollbar",
+    "Toast",
+    "CRUD"
+  ],
+  "ownership": {
+    "Select/Listbox": "native",
+    "Date": "native"
+  },
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "frontendTests": "npm test",
+    "productionBuild": "npm run build"
+  },
+  "requiredCommands": ["typecheck", "frontendTests", "productionBuild"]
+}

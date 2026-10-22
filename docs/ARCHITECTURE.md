@@ -2,7 +2,7 @@
 
 ## Status
 
-The full diagram is the planned architecture. Through Step 7, packet ingestion, flow building, shared features, dataset/training tools, optional model inference, explainable alerts, SQLAlchemy persistence, Alembic migrations, authenticated REST APIs, role checks, audit records, and authenticated alert delivery are implemented. PostgreSQL service integration is not verified on this host. The dashboard and container deployment remain planned.
+The architecture diagram describes the system target. Through Step 8, packet ingestion, flow building, shared features, dataset/training tools, optional model inference, explainable alerts, SQLAlchemy persistence, Alembic migrations, authenticated REST APIs, role checks, audit records, authenticated alert delivery, and a React dashboard are implemented. PostgreSQL service integration is not verified on this host. Container deployment remains planned.
 
 ## Target data flow
 
@@ -32,7 +32,7 @@ flowchart LR
 
 ## Failure handling goals
 
-Bound queues and flow state; make replay deterministic; report parser failures; keep model-unavailable status explicit while allowing independent rules; preserve persisted alerts when WebSocket clients disconnect; and report database unavailability as degraded readiness. Flow/model handling is implemented through Step 5. Step 6 adds database readiness and atomic-write failure reporting. Step 7 polls persisted alerts for authenticated socket clients and supports a timestamp/ID reconnect cursor. Socket load is not stress-tested; clients reconnecting without a cursor receive only events created after their new connection starts.
+Bound queues and flow state; make replay deterministic; report parser failures; keep model-unavailable status explicit while allowing independent rules; preserve persisted alerts when WebSocket clients disconnect; and report database unavailability as degraded readiness. Flow/model handling is implemented through Step 5. Step 6 adds database readiness and atomic-write failure reporting. Step 7 polls persisted alerts for authenticated socket clients and supports a timestamp/ID reconnect cursor. Step 8 provides authenticated browser views over persisted alerts and flows, filterable/paged REST reads, role-aware acknowledgement, and reconnecting stream status. Socket load is not stress-tested; clients reconnecting without a cursor receive only events created after their new connection starts.
 
 ## Implemented in Step 2
 

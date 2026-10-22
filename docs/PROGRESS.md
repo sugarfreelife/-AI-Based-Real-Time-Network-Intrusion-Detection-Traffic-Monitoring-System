@@ -211,3 +211,29 @@ Next add JWT authentication, password hashing, role enforcement, audit events, a
 ### Next task
 
 Step 7 is complete on GitHub. Next implement the authenticated dashboard in Step 8.
+
+## Step 8 of 10 — Authenticated dashboard
+
+**Status:** Implemented and verified locally. Ready for the Step 8 commit and push.
+
+### Delivered
+
+- Added a strict TypeScript React dashboard with sign-in, alerts, and flows screens backed by the authenticated API. Access and refresh tokens stay in memory; refresh rotation, sign-out, role-based navigation, and viewer restrictions are handled in the client.
+- Added URL-backed filters, pagination, detail inspection, status/severity views, and alert acknowledgement for analysts/admins. The severity chart describes only the currently loaded page; the dashboard does not invent totals or production telemetry.
+- Added explicit loading, empty, error, permission, reconnecting, and API health states, responsive navigation, and keyboard-accessible form and table controls.
+- Added an exact-origin CORS allowlist for separately hosted development clients. Added `websockets==17.2` to the backend dependency inputs and locks so the pinned Uvicorn runtime includes a WebSocket implementation.
+- Added the frontend build, type-check, and test setup; design and UX contracts; strict UI audit report; and setup/API/architecture/limitation documentation.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest -q --basetemp=.pytest-step8-tmp`: PASS, 60 tests, including CORS, authenticated WebSocket, alert acknowledgement, and API integration coverage.
+- In `frontend/`, `npm run typecheck`: PASS; `npm test -- --reporter=dot`: PASS, 5 tests; `npm run build`: PASS. Production output is split into the app and chart chunks without a bundle-size warning.
+- Strict UI audit: PASS, 0 findings in `docs/ui-audit-step8.json`.
+- `npx --yes --package=@google/design.md designmd lint ..\DESIGN.md`: PASS, 0 warnings.
+- `git diff --check`: PASS.
+- Browser review with a local synthetic-only SQLite fixture confirmed sign-in and persisted alert rows. The live WebSocket indicator was not rechecked in the browser after adding the backend WebSocket runtime dependency; the authenticated WebSocket behavior is covered by the passing backend suite. The fixture is local, ignored by Git, and contains no production or research metrics.
+- Real dataset/model evaluation and PostgreSQL service integration remain blocked as recorded above; Step 8 does not claim either.
+
+### Next task
+
+After the Step 8 checkpoint is committed and pushed, continue with Step 9 (reproducible operation and documentation).

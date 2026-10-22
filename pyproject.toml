@@ -20,6 +20,7 @@ backend = [
     "alembic==1.20.0",
     "psycopg[binary]==3.3.6",
     "uvicorn==0.54.0",
+    "websockets==17.2",
     "pwdlib[argon2]==0.3.1",
     "PyJWT==2.15.1",
 ]

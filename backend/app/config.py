@@ -15,6 +15,7 @@ class Settings:
     jwt_audience: str = "nids-client"
     access_token_minutes: int = 15
     refresh_token_days: int = 14
+    cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 
     @classmethod
     def from_environment(cls) -> Settings:
@@ -23,6 +24,11 @@ class Settings:
             jwt_secret_key=os.getenv("JWT_SECRET_KEY", "").strip(),
             jwt_issuer=os.getenv("JWT_ISSUER", "nids-api").strip() or "nids-api",
             jwt_audience=os.getenv("JWT_AUDIENCE", "nids-client").strip() or "nids-client",
+            cors_origins=tuple(
+                origin.strip().rstrip("/")
+                for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+                if origin.strip()
+            ),
         )
 
 

@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from fastapi import Depends, FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -38,6 +39,14 @@ def create_app(
     app.dependency_overrides[get_session] = request_session
     app.state.session_factory = session_factory
     app.state.auth_config = auth_config
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(auth_config.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
     @app.get("/health/live", tags=["health"])
     def live() -> dict[str, str]:
