@@ -2,7 +2,7 @@
 
 ## Current result
 
-Step 1 began with no application code or test suite. Steps 2–6 add packet, flow, feature, dataset/training, inference, persistence, and API tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
+Step 1 began with no application code or test suite. The 10-step plan is now complete; the final local Python suite has 60 passing tests, and the dashboard has five passing frontend tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
 The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. A local PostgreSQL service is not available; database/API behavior is checked with SQLite, and PostgreSQL integration remains blocked.
 
@@ -49,6 +49,12 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 9 | `docker compose --profile demo config --quiet` | PASS; the optional monitor service parses |
 | 9 | Docker image builds and service startup | BLOCKED; access to the Docker Desktop Linux engine named pipe is denied |
 | 9 | PostgreSQL-backed container PCAP demo | NOT TESTED; requires the Docker engine and an authorized capture |
+| 10 | Full Python integration suite | PASS, 60 tests via `.venv\Scripts\python.exe -m pytest -q --basetemp=.pytest-step10-tmp` |
+| 10 | Dashboard type check, frontend tests, and production build | PASS; 5 tests; main JS 309.13 kB, chart chunk 357.07 kB, CSS 34.60 kB (pre-gzip) |
+| 10 | Fresh SQLite migration through `0002_authentication` and Alembic schema-drift check | PASS; no new upgrade operations detected |
+| 10 | Replay, monitor, API, admin provisioning, and training CLI help | PASS; live capture still lacks libpcap support |
+| 10 | Credential-shaped tracked-source scan and Git ignore checks | PASS |
+| 10 | Docker image build, PostgreSQL server, real-data metrics, and live capture | BLOCKED or NOT TESTED as listed in the final handoff |
 
 The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 
@@ -60,4 +66,6 @@ Step 8 browser inspection used a local synthetic-only SQLite review fixture to v
 
 Step 9's Compose configuration check validates the service definition only. It is not evidence that Docker images build, PostgreSQL starts, migrations run in a container, or the dashboard can reach those services. The current host's Docker engine access must be resolved before those checks can be reported as passing.
 
-Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.
+Step 10's full Python and frontend suites pass. A fresh SQLite database migrated to the latest Alembic revision and `alembic check` found no schema drift. This does not establish live PostgreSQL or Docker behavior. No classifier quality or real traffic performance was measured because no verified dataset/model was available.
+
+Record future maintenance checks here with the exact command, result, and relevant blocker. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.

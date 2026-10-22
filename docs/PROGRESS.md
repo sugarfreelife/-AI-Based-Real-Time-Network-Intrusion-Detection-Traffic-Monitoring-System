@@ -95,7 +95,7 @@ Step 3 is complete on GitHub. The next task is Step 4 (dataset and training pipe
 
 ## Step 4 of 10 — Dataset preparation and model evaluation
 
-**Status:** Pipeline implemented and verified locally; commit and push are pending. Real dataset evaluation is blocked because no dataset or labels were supplied.
+**Status:** Implemented, verified, committed as `fef5845`, and pushed to `origin/main`. Real dataset evaluation is blocked because no dataset or labels were supplied.
 
 ### Delivered
 
@@ -158,7 +158,7 @@ Step 5 commit `6b25899` was pushed to `origin/main`. Next implement PostgreSQL p
 
 ## Step 6 of 10 — Persistence and REST API
 
-**Status:** Implemented and verified locally. PostgreSQL service integration is blocked on this host because no local server is listening on port 5432.
+**Status:** Implemented and verified, committed as `f4ac18b`, and pushed to `origin/main`. PostgreSQL service integration is blocked on this host because no local server is listening on port 5432.
 
 ### Delivered
 
@@ -240,7 +240,7 @@ Step 8 is complete on GitHub. Step 9 covers reproducible operation and documenta
 
 ## Step 9 of 10 — Reproducible operation and academic handoff
 
-**Status:** Compose configuration and handoff documentation are implemented and locally validated. Container runtime verification is blocked because this host cannot access the Docker Desktop engine.
+**Status:** Implemented, locally validated, committed, and pushed to `origin/main`. Container runtime verification is blocked because this host cannot access the Docker Desktop engine.
 
 ### Delivered
 
@@ -262,4 +262,35 @@ Step 8 is complete on GitHub. Step 9 covers reproducible operation and documenta
 
 ### Next task
 
-After the Step 9 checkpoint is committed and pushed, perform Step 10 integration checks and complete the evidence-based handoff.
+Step 9 is complete on GitHub. Step 10 is the final integration and evidence-based handoff.
+
+## Step 10 of 10 — Integration and handoff
+
+**Status:** Complete and pushed to `origin/main`; results are limited to checks that this host can run.
+
+### Delivered
+
+- Re-ran the Python integration suite, dashboard type-check/tests/build, fresh SQLite migration and schema-drift check, and documented command help paths.
+- Checked GitHub branch synchronization, Git exclusions for local secrets/captures/datasets/models/databases, and tracked-source strings matching common credential formats.
+- Added `docs/HANDOFF.md` with verified capabilities, exact evidence, environmental blockers, and the boundaries on any research claims. The report outline and viva guide remain available as separate academic materials.
+- Updated README, limitations, progress, and test records to state that all ten implementation steps are complete while retaining the unresolved infrastructure/data limits.
+
+### Final verification matrix
+
+| Area | Result | Evidence and limits |
+|---|---|---|
+| Packet, flow, feature, dataset, inference, persistence, REST, auth, and WebSocket software | PASS | 60 Python tests; this is software behavior coverage, not detection-quality evidence. |
+| Frontend | PASS | Type-check, 5 tests, and production build; main JavaScript 309.13 kB, chart chunk 357.07 kB, CSS 34.60 kB before gzip. |
+| SQLite schema | PASS | Fresh migration reaches `0002_authentication`; Alembic check reports no new operations. |
+| Command entry points | PASS | Replay, monitor, API, admin provisioning, and training help commands run. No libpcap provider is available for live capture. |
+| Compose definitions | PASS | Base stack and `demo` profile both pass `docker compose config --quiet` with transient validation-only secrets. |
+| Docker image build and service execution | BLOCKED / NOT TESTED | `docker info` is denied access to the Docker Desktop named pipe; no images or containers were run. |
+| Live PostgreSQL integration | BLOCKED | No PostgreSQL service was available on the host. SQLite integration and PostgreSQL migration rendering are not substitutes for a live service test. |
+| Real-data model training and detection metrics | BLOCKED | No provenance-tracked labeled data or model was supplied. No model scores or research metrics are reported. |
+| Live packet capture | NOT TESTED | Npcap/libpcap is unavailable on this host; only offline replay is covered. |
+| Tracked-secret scan and Git exclusions | PASS | No credential-shaped strings found in tracked source; `.env`, PCAPs, local data/model artifacts, databases, and frontend dependencies are ignored. |
+| GitHub checkpoint | PASS | `main` matches `origin/main`; the Step 10 commit is the final planned checkpoint. |
+
+### Next action
+
+The ten-step build is finished. Further validation depends on a host that can run Docker/PostgreSQL and on provenance-tracked labeled captures; no additional implementation step is planned.
