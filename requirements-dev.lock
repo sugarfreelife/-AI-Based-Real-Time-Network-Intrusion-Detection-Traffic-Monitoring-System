@@ -2,6 +2,9 @@ alembic==1.20.0
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+cffi==2.1.1
 click==8.5.0
 cloudpickle==3.1.2
 colorama==0.4.6
@@ -22,9 +25,12 @@ pandas==3.0.6
 pluggy==1.7.0
 psycopg==3.3.6
 psycopg-binary==3.3.6
+pwdlib==0.3.1
+pycparser==3.11
 pydantic==2.14.1
 pydantic_core==2.50.1
 Pygments==2.21.0
+PyJWT==2.15.1
 pytest==9.1.1
 python-dateutil==2.9.0.post0
 scapy==2.8.0

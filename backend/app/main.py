@@ -12,13 +12,19 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.app.api.auth import auth_router
 from backend.app.api.routes import router
+from backend.app.api.websockets import websocket_router
+from backend.app.config import Settings, settings
 from backend.app.database.session import SessionLocal, get_session
 
 logger = logging.getLogger("backend.health")
 
 
-def create_app(session_factory: sessionmaker[Session] = SessionLocal) -> FastAPI:
+def create_app(
+    session_factory: sessionmaker[Session] = SessionLocal,
+    auth_config: Settings = settings,
+) -> FastAPI:
     app = FastAPI(
         title="NIDS API",
         version="0.1.0",
@@ -30,6 +36,8 @@ def create_app(session_factory: sessionmaker[Session] = SessionLocal) -> FastAPI
             yield session
 
     app.dependency_overrides[get_session] = request_session
+    app.state.session_factory = session_factory
+    app.state.auth_config = auth_config
 
     @app.get("/health/live", tags=["health"])
     def live() -> dict[str, str]:
@@ -48,6 +56,8 @@ def create_app(session_factory: sessionmaker[Session] = SessionLocal) -> FastAPI
         return {"status": "ready", "database": "available"}
 
     app.include_router(router)
+    app.include_router(auth_router)
+    app.include_router(websocket_router)
     return app
 
 

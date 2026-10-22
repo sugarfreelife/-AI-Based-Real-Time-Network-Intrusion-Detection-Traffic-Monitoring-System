@@ -20,12 +20,15 @@ backend = [
     "alembic==1.20.0",
     "psycopg[binary]==3.3.6",
     "uvicorn==0.54.0",
+    "pwdlib[argon2]==0.3.1",
+    "PyJWT==2.15.1",
 ]
 
 [project.scripts]
 nids-replay = "nids_engine.replay:main"
 nids-monitor = "nids_engine.monitor:main"
 nids-api = "backend.app.cli:main"
+nids-admin = "backend.app.auth_admin:main"
 
 [tool.setuptools.packages.find]
 include = ["nids_engine*", "ml*", "backend*"]

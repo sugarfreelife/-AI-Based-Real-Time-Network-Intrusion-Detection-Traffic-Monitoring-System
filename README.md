@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 6 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, and serve paginated REST reads. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. Authentication, WebSockets, and the dashboard remain planned.
+This repository is at Step 7 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, serve authenticated REST reads, acknowledge alerts by role, and stream persisted alerts over authenticated WebSockets. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. The dashboard and container deployment remain planned.
 
 ## Planned technology
 
@@ -46,10 +46,20 @@ python -m nids_engine.monitor `
 
 Add `--model .\ml\models\nids-model.joblib` to enable classifier output. The model must have its matching metadata sidecar and must be a trusted artifact produced by this project's training pipeline. Output flow records and alerts are JSON lines on standard output; the capture summary is written to standard error. Rule alerts remain available when model loading is missing or incompatible. See [docs/DETECTION.md](docs/DETECTION.md) for rule definitions and limitations.
 
-Run the test suite with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For later services, copy `.env.example` to `.env` and supply local values; never commit `.env`.
+Run the API with JWT authentication after configuring and migrating the database:
+
+```powershell
+$env:DATABASE_URL = "sqlite+pysqlite:///./nids.db"
+$env:JWT_SECRET_KEY = (python -c "import secrets; print(secrets.token_urlsafe(48))")
+python -m alembic upgrade head
+python -m backend.app.auth_admin --username admin
+python -m backend.app.cli --host 127.0.0.1 --port 8000
+```
+
+The administrator password is entered with hidden input. Admins can create analyst and viewer accounts through `POST /api/v1/auth/users`. The dashboard and container deployment are planned next. Run the test suite with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). Copy `.env.example` to `.env` for reference and supply real local values through your environment; never commit `.env`.
 
 The ordered inference inputs and missing-value rules are documented in [docs/FEATURE_SCHEMA.md](docs/FEATURE_SCHEMA.md).
 
 For labeled capture preparation and training commands, see [ml/data/README.md](ml/data/README.md) and [docs/ML_METHODOLOGY.md](docs/ML_METHODOLOGY.md). Dataset and generated model files are excluded from Git.
 
-For database migrations, run instructions, API filters, and the current local-only security boundary, see [docs/DATABASE.md](docs/DATABASE.md) and [docs/API.md](docs/API.md).
+For database migrations, authentication, API filters, role permissions, and the WebSocket protocol, see [docs/DATABASE.md](docs/DATABASE.md) and [docs/API.md](docs/API.md).

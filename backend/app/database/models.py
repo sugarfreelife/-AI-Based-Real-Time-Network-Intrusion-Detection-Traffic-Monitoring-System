@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.database.base import Base, UTCDateTime
@@ -92,6 +92,65 @@ class AlertDB(Base):
     model_version: Mapped[str | None] = mapped_column(String(128))
     evidence: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="new", nullable=False)
+    acknowledged_by_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey(
+            "users.id", ondelete="SET NULL", name="fk_alerts_acknowledged_by_user_id_users"
+        )
+    )
+    acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_now_utc, nullable=False)
 
     flow: Mapped[FlowRecordDB] = relationship(back_populates="alerts")
+
+
+class UserDB(Base):
+    __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("username", name="uq_users_username"),
+        Index("ix_users_role_active", "role", "is_active"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_now_utc, onupdate=_now_utc, nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class RefreshSessionDB(Base):
+    __tablename__ = "refresh_sessions"
+    __table_args__ = (
+        UniqueConstraint("jti_hash", name="uq_refresh_sessions_jti_hash"),
+        Index("ix_refresh_sessions_user_expiry", "user_id", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey(
+        "users.id", ondelete="CASCADE", name="fk_refresh_sessions_user_id_users"
+    ), nullable=False)
+    jti_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_now_utc, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class AuditEventDB(Base):
+    __tablename__ = "audit_events"
+    __table_args__ = (
+        Index("ix_audit_events_occurred_at", "occurred_at"),
+        Index("ix_audit_events_actor_time", "actor_user_id", "occurred_at"),
+        Index("ix_audit_events_type_time", "event_type", "occurred_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_id)
+    actor_user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey(
+        "users.id", ondelete="SET NULL", name="fk_audit_events_actor_user_id_users"
+    ))
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_type: Mapped[str | None] = mapped_column(String(32))
+    target_id: Mapped[str | None] = mapped_column(String(64))
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=_now_utc, nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)

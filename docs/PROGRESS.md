@@ -184,3 +184,30 @@ Step 5 commit `6b25899` was pushed to `origin/main`. Next implement PostgreSQL p
 ### Next task
 
 Next add JWT authentication, password hashing, role enforcement, audit events, and authenticated WebSocket delivery in Step 7.
+
+## Step 7 of 10 — WebSockets and access control
+
+**Status:** Implemented and verified; the Step 7 checkpoint is committed and pushed to `origin/main` before Step 8.
+
+### Delivered
+
+- Added users with normalized unique usernames, active state, admin/analyst/viewer roles, Argon2id password hashes via `pwdlib`, and a hidden-input command for the first administrator. Public registration is not exposed.
+- Added HS256 access and refresh JWTs with issuer/audience validation, required claims, token-purpose checks, and a 15-minute access lifetime. Refresh tokens last 14 days, rotate on use, and are stored only as SHA-256 digests of their `jti` values. Reuse of a rotated token revokes all active refresh sessions for that user.
+- Protected flow and alert REST reads, provided `/auth/me`, and added admin-only user creation. Admins and analysts can acknowledge an alert; viewer actions are rejected. Alert actor and timestamp are persisted.
+- Added audit records for bootstrap/user creation, successful and failed login, refresh, logout, role denials, refresh reuse, and alert acknowledgement. Audit details do not contain passwords or tokens.
+- Added `/api/v1/ws/alerts`. The first WebSocket frame carries an access token; URLs do not carry tokens. New alerts are polled from persistence, including alerts created by the separate monitor process. Clients can resume with the last alert timestamp and ID; expired/invalid authentication and database failures close the connection with documented codes.
+- Added Alembic migration `0002_authentication`, locked `pwdlib`, Argon2, and PyJWT dependencies, and updated API, architecture, database, setup, and limitation documents.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest` in the approved execution context: PASS, 59 tests. Added coverage for Argon2id, login/audit behavior, missing secrets, refresh rotation/reuse/logout, role restrictions and denial audit, initial admin provisioning, acknowledgement metadata, authenticated WebSocket delivery, reconnect cursor behavior, and database failure closure.
+- `.venv\Scripts\python.exe -m compileall -q backend database/migrations ml nids_engine tests`: PASS.
+- Alembic upgrade to `0002_authentication` on fresh SQLite database: PASS. Alembic `check`: PASS, no schema drift.
+- PostgreSQL offline migration rendering: PASS; SQL includes user/session/audit tables and acknowledgement columns/FK. A live PostgreSQL service remains unavailable, so PostgreSQL integration is not claimed.
+- API runner and admin-provisioning module help: PASS.
+- `git diff --check`: PASS.
+- Docker deployment, dashboard, login rate limiting, and deployed TLS review remain pending or untested in later steps.
+
+### Next task
+
+Step 7 is complete on GitHub. Next implement the authenticated dashboard in Step 8.

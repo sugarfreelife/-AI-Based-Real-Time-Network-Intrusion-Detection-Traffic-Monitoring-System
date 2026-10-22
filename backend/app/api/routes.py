@@ -1,15 +1,16 @@
-"""Read-only, validated REST resources for persisted flow observations."""
+"""Validated, authenticated REST resources for persisted flow observations."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from backend.app.database.models import AlertDB, FlowRecordDB
+from backend.app.api.auth import _audit, get_current_user, require_roles
+from backend.app.database.models import AlertDB, FlowRecordDB, UserDB
 from backend.app.database.session import get_session
 from backend.app.schemas import AlertRead, FlowRead, Page
 
@@ -27,6 +28,7 @@ def _validate_range(since: datetime | None, until: datetime | None) -> None:
 @router.get("/flows", response_model=Page[FlowRead])
 def list_flows(
     session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     protocol: Annotated[str | None, Query(min_length=1, max_length=16)] = None,
@@ -60,6 +62,7 @@ def list_flows(
 def get_flow(
     flow_record_id: str,
     session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
 ) -> FlowRead:
     record = session.scalar(
         select(FlowRecordDB)
@@ -74,6 +77,7 @@ def get_flow(
 @router.get("/alerts", response_model=Page[AlertRead])
 def list_alerts(
     session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     severity: Literal["low", "medium", "high", "critical"] | None = None,
@@ -110,8 +114,33 @@ def list_alerts(
 def get_alert(
     alert_id: str,
     session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
 ) -> AlertRead:
     record = session.get(AlertDB, alert_id)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="alert not found")
+    return AlertRead.model_validate(record)
+
+
+@router.patch("/alerts/{alert_id}/acknowledge", response_model=AlertRead)
+def acknowledge_alert(
+    alert_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    actor: Annotated[UserDB, Depends(require_roles("admin", "analyst"))],
+) -> AlertRead:
+    record = session.get(AlertDB, alert_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="alert not found")
+    if record.status != "acknowledged":
+        record.status = "acknowledged"
+        record.acknowledged_by_user_id = actor.id
+        record.acknowledged_at = datetime.now(UTC)
+        _audit(
+            session,
+            "alert.acknowledged",
+            actor_user_id=actor.id,
+            target_type="alert",
+            target_id=record.id,
+        )
+        session.commit()
     return AlertRead.model_validate(record)
