@@ -309,3 +309,19 @@ This deployment check was completed after the ten planned steps. It updates infr
 - `GET http://127.0.0.1:8080/health/ready`: PASS, HTTP 200 with `{"status":"ready","database":"available"}`.
 - The local Compose stack remains running with its persistent PostgreSQL volume. No administrator was provisioned; use the documented hidden-password command before sign-in.
 - No PCAP was replayed. No real dataset/model was present; detection-quality metrics remain unavailable and unclaimed.
+
+## Step 11 of 20 — PostgreSQL integration coverage
+
+**Status:** Implemented and verified against a disposable PostgreSQL Compose project; the test database and volume were removed after the run.
+
+### Delivered
+
+- Added opt-in PostgreSQL integration coverage for login, authenticated reads, transactional flow/alert persistence, acknowledgement, refresh rotation, and WebSocket authentication.
+- The test refuses to connect unless explicitly enabled and the target database name contains `test`; generated database rows are uniquely scoped and cleaned up.
+- Extended the plan to Steps 11–20 with individual commit/push checkpoints as requested.
+
+### Verification
+
+- `docker compose -p nids-step11 up --build --detach --wait postgres api`: PASS; the temporary PostgreSQL service and migrated API became healthy.
+- The opt-in integration test: PASS, 1 test in 8.83 seconds with no warnings. It covered login, authenticated `/me` and flows reads, PostgreSQL flow/prediction/alert persistence, acknowledgement, refresh rotation, authenticated WebSocket handshake and alert delivery, and cleanup.
+- `docker compose -p nids-step11 down --volumes`: PASS; only the isolated test project containers, network, and database volume were removed. The active `nids-local` project was not touched.

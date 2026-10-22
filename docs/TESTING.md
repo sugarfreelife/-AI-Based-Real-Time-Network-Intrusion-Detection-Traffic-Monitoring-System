@@ -69,6 +69,19 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | `GET http://127.0.0.1:8080/health/ready` | PASS | HTTP 200; `{"status":"ready","database":"available"}`. |
 | PostgreSQL-backed account/replay flow | NOT TESTED | No account was provisioned and no authorized capture was supplied. |
 | Real-data model evaluation and live capture | BLOCKED / NOT TESTED | No verified labeled dataset/model or supported live-capture provider is available. |
+| Step 11 isolated PostgreSQL integration test | PASS, 1 test in 8.83 seconds, no warnings | Covered authentication, flow/prediction/alert persistence, acknowledgement, refresh rotation, WebSocket delivery, and cleanup. The disposable `nids-step11` project and volume were removed. |
+
+The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
+
+```powershell
+$env:POSTGRES_DB = "nids_test"
+docker compose -p nids-step11 up --detach --wait postgres api
+docker compose -p nids-step11 run --rm --no-deps -e NIDS_ENABLE_POSTGRES_TESTS=1 --volume .\tests:/workspace/tests:ro api python -m pytest -c /app/pyproject.toml -p no:cacheprovider --basetemp /tmp/pytest-step11 -q /workspace/tests/test_postgres_integration.py -m postgres
+docker compose -p nids-step11 down --volumes
+Remove-Item Env:\POSTGRES_DB
+```
+
+Use `.env` from the repository root for Compose secrets. The isolated project name and `nids_test` database prevent the test from touching the normal `nids-local` database. The command above is a disposable verification workflow; do not replace the project name with `nids-local`.
 
 The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 

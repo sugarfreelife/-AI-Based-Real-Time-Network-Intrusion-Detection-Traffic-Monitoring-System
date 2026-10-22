@@ -37,3 +37,4 @@ include = ["nids_engine*", "ml*", "backend*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --basetemp=.pytest-tmp"
+markers = ["postgres: opt-in integration tests that require a disposable PostgreSQL database"]
