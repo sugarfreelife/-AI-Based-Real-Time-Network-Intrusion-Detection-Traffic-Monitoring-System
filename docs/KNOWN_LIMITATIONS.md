@@ -1,17 +1,17 @@
 # Known Limitations and Blockers
 
-This list reflects the final Step 10 handoff. It separates implemented software from unavailable data and infrastructure verification.
+This list reflects the completed 10-step handoff and the runtime verification performed on 2026-10-22. It separates implemented software from unavailable data and remaining validation.
 
 | Item | Status | Evidence / recovery |
 |---|---|---|
 | GitHub destination | CONFIGURED | `origin` points to the user-provided repository; Step 1 commit `cad3edf` was pushed to `main`. |
 | Project Python libraries | RESOLVED FOR LOCAL STEPS 2–10 | Scapy 2.8.0, NumPy 2.4.5, pandas 3.0.6, scikit-learn 1.9.1, FastAPI 0.158.1, Pydantic 2.14.1, SQLAlchemy 2.1.5, Alembic 1.20.0, Psycopg 3.3.6, Uvicorn 0.54.0, websockets 17.2, pwdlib 0.3.1, PyJWT 2.15.1, Argon2, and locked dependencies are installed in the ignored project `.venv`. |
 | Live packet capture | NOT AVAILABLE / unverified | The Npcap service and libpcap provider were not detected. Offline PCAP/PCAPNG replay works; live capture requires an authorized interface and supported packet-capture driver. |
-| Docker services | CONFIGURED; runtime blocked in this session | The Compose file defines PostgreSQL, API, dashboard, and an optional PCAP monitor service. Static Compose configuration validation passes, but Docker image build/start remains blocked because access to the Docker Desktop Linux engine's named pipe is denied. |
-| PostgreSQL service integration | BLOCKED on this host | `psql` is unavailable and localhost port 5432 refused a connection. Migrations, schema drift, REST behavior, and monitor persistence pass with SQLite. PostgreSQL driver packages are installed; verify against a reachable PostgreSQL service when available. |
+| Docker services | VERIFIED LOCALLY | Compose images built; PostgreSQL and API are healthy; dashboard is serving on `http://127.0.0.1:8080`. See `HANDOFF.md` for exact checks. |
+| PostgreSQL service integration | PARTIALLY VERIFIED | Compose PostgreSQL became healthy, accepted application migrations through `0002_authentication`, and API readiness confirmed database availability. PostgreSQL-backed account flows and monitor replay were not yet exercised. |
 | Dataset and trained model | NOT PROVIDED | No dataset or model was present in the empty workspace. No model metrics or supported attack classes can be claimed until data is acquired and evaluated. |
-| Full NIDS application | SOFTWARE IMPLEMENTED; VALIDATION PARTIAL | All 10 planned software and documentation steps are complete. Packet ingestion, flow construction, features, data/training infrastructure, optional inference, alerts, persistence, Argon2id/JWT authentication, role-checked REST, audit events, authenticated WebSocket delivery, dashboard, local Compose configuration, replay workflow, and academic handoff are implemented. No real model is trained; live PostgreSQL and container runtime integration remain unverified. |
-| PostgreSQL authentication integration | BLOCKED on this host | The Step 7 schema migration compiles for PostgreSQL and passes SQLite migration/schema-drift checks. A live PostgreSQL server is unavailable, so connection, row-lock behavior, and production database integration remain untested. |
+| Full NIDS application | SOFTWARE IMPLEMENTED; LOCAL DEPLOYMENT VERIFIED | All 10 planned software and documentation steps are complete. The local Compose app is running; first administrator provisioning and authorized PCAP replay remain operator actions. No real model is trained. |
+| PostgreSQL authentication integration | NOT FULLY TESTED | PostgreSQL startup, schema migration, and API readiness pass. Full login, refresh, role, acknowledgement, and monitor flows against PostgreSQL were not part of the runtime smoke check. |
 | Authentication hardening | PARTIAL | Access/refresh lifecycles, role checks, Argon2id, and audit events have local coverage. Login rate limiting, access-token revocation lists, and a security review under a deployed TLS configuration are not implemented. Dashboard tokens are held in memory and require sign-in again after a full page reload. |
 | Python environment bootstrap | DEGRADED | `python -m venv` failed during `ensurepip` because the base Python launcher reports that it cannot resolve `C:\Python314\python.exe`. The partial local `.venv` can run the installed project modules, but has no `pip` module. Installing the project entry-point scripts was not verified; a targeted install also hit a permission error in the sandbox temporary directory. |
 

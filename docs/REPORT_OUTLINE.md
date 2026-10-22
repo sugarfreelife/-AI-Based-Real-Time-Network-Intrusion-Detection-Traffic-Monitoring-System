@@ -57,8 +57,8 @@ Report only measured held-out results. Include test-group counts and class suppo
 | Real labeled dataset and capture groups | BLOCKED until supplied | Dataset manifest and source records |
 | Held-out classifier metrics | NOT AVAILABLE | Training report from a real verified dataset |
 | Software behavior on controlled fixtures | PASS for covered tests | `TESTING.md`; software correctness only |
-| PostgreSQL service integration | BLOCKED on the current host | Connection/integration run record |
-| Container execution | Record after an engine-backed run | Compose logs and commands |
+| PostgreSQL service integration | Local Compose service verified on 2026-10-22 | `HANDOFF.md` and `TESTING.md` runtime record |
+| Container execution | PASS for image build, migrations, service health, and dashboard/health HTTP | `HANDOFF.md` and `TESTING.md`; PCAP replay still requires a supplied authorized capture |
 
 ## 7. Discussion
 

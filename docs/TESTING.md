@@ -4,7 +4,7 @@
 
 Step 1 began with no application code or test suite. The 10-step plan is now complete; the final local Python suite has 60 passing tests, and the dashboard has five passing frontend tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
-The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. A local PostgreSQL service is not available; database/API behavior is checked with SQLite, and PostgreSQL integration remains blocked.
+The initial Step 10 audit could not access Docker due to named-pipe permissions. On 2026-10-22, elevated local execution succeeded: Compose images built, PostgreSQL/API became healthy, migrations ran through `0002_authentication`, and the dashboard and database readiness endpoint returned HTTP 200. The exact runtime follow-up is recorded below. No authorized PCAP or labeled research dataset was supplied.
 
 ## Verification record
 
@@ -54,7 +54,21 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 10 | Fresh SQLite migration through `0002_authentication` and Alembic schema-drift check | PASS; no new upgrade operations detected |
 | 10 | Replay, monitor, API, admin provisioning, and training CLI help | PASS; live capture still lacks libpcap support |
 | 10 | Credential-shaped tracked-source scan and Git ignore checks | PASS |
-| 10 | Docker image build, PostgreSQL server, real-data metrics, and live capture | BLOCKED or NOT TESTED as listed in the final handoff |
+| 10 | Docker image build, PostgreSQL server, real-data metrics, and live capture | At original Step 10 handoff: infrastructure access blocked; research data/live capture unavailable |
+
+## Post-Step 10 runtime verification — 2026-10-22
+
+This follow-up updates the infrastructure checks without adding an implementation step. The ten-step plan remains complete.
+
+| Check | Result | Evidence |
+|---|---|---|
+| `docker compose up --build --detach` | PASS | API and dashboard images built; PostgreSQL, API, and dashboard containers started. |
+| `docker compose ps --format json` | PASS | PostgreSQL and API healthy; dashboard running. |
+| `docker compose exec -T api python -m alembic current` | PASS | PostgreSQL migration state is `0002_authentication (head)`. |
+| `GET http://127.0.0.1:8080/` | PASS | HTTP 200; app root element present. |
+| `GET http://127.0.0.1:8080/health/ready` | PASS | HTTP 200; `{"status":"ready","database":"available"}`. |
+| PostgreSQL-backed account/replay flow | NOT TESTED | No account was provisioned and no authorized capture was supplied. |
+| Real-data model evaluation and live capture | BLOCKED / NOT TESTED | No verified labeled dataset/model or supported live-capture provider is available. |
 
 The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 
@@ -64,8 +78,8 @@ Step 6 database and API checks use temporary SQLite databases. They validate the
 
 Step 8 browser inspection used a local synthetic-only SQLite review fixture to verify sign-in and populated persisted alert rows. The final browser-level WebSocket indicator was not rechecked after the runtime dependency adjustment; authenticated WebSocket behavior is covered by the backend suite. Fixture data is not a production or research result.
 
-Step 9's Compose configuration check validates the service definition only. It is not evidence that Docker images build, PostgreSQL starts, migrations run in a container, or the dashboard can reach those services. The current host's Docker engine access must be resolved before those checks can be reported as passing.
+At Step 9, the Compose configuration check validated the service definition only because Docker engine access was denied. That historical limitation was resolved for local deployment on 2026-10-22, as recorded above.
 
-Step 10's full Python and frontend suites pass. A fresh SQLite database migrated to the latest Alembic revision and `alembic check` found no schema drift. This does not establish live PostgreSQL or Docker behavior. No classifier quality or real traffic performance was measured because no verified dataset/model was available.
+Step 10's full Python and frontend suites pass. A fresh SQLite database migrated to the latest Alembic revision and `alembic check` found no schema drift. The subsequent Compose verification covers PostgreSQL startup/migrations, API readiness, and dashboard serving; it does not cover the full PostgreSQL auth/replay path. No classifier quality or real traffic performance was measured because no verified dataset/model was available.
 
 Record future maintenance checks here with the exact command, result, and relevant blocker. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.

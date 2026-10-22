@@ -1,6 +1,6 @@
 # Local container deployment and PCAP demo
 
-This Compose stack is for a local academic demonstration. It defines PostgreSQL, the authenticated API, and the dashboard. The database and API are reachable only on the Compose network; the dashboard is published on the host loopback address. It does not configure TLS or make the system ready for public deployment. Compose configuration parses on the current host, but image builds and service startup remain unverified because this host cannot access its Docker engine.
+This Compose stack is for a local academic demonstration. It defines PostgreSQL, the authenticated API, and the dashboard. The database and API are reachable only on the Compose network; the dashboard is published on the host loopback address. It does not configure TLS or make the system ready for public deployment. The pinned images have been built and the services verified on the development host; see [HANDOFF.md](HANDOFF.md) for the dated runtime evidence.
 
 ## Requirements
 
@@ -33,13 +33,13 @@ docker compose up --build --detach
 docker compose ps
 ```
 
-The API waits for PostgreSQL, applies Alembic migrations, and then starts. The dashboard waits for the API readiness check. Create the first administrator with hidden password entry:
+The API waits for PostgreSQL, applies Alembic migrations, and then starts. The dashboard waits for the API readiness check. Open <http://127.0.0.1:8080>. Create the first administrator with hidden password entry:
 
 ```powershell
 docker compose exec api python -m backend.app.auth_admin --username admin
 ```
 
-Open <http://127.0.0.1:8080> and sign in. With no imported capture, the dashboard should show its empty state. The project does not load sample alerts or fabricate metrics.
+Sign in with the account you created. With no imported capture, the dashboard should show its empty state. The project does not load sample alerts or fabricate metrics.
 
 ## Replay an authorized PCAP into the dashboard
 

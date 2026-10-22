@@ -54,7 +54,7 @@ Persisting observations allows the API and dashboard to query the same records a
 
 ### Which database is implemented and which was tested?
 
-SQLAlchemy models and Alembic migrations support PostgreSQL. SQLite-backed migrations and API integration tests pass. A PostgreSQL service was not available on the development host, so live PostgreSQL integration is not claimed.
+SQLAlchemy models and Alembic migrations support PostgreSQL. SQLite-backed API integration tests pass, and the local Compose PostgreSQL service was verified on 2026-10-22: it became healthy, accepted migrations through `0002_authentication`, and the API readiness route reported database availability. See `HANDOFF.md` for the exact evidence.
 
 ### How is the first administrator created?
 
@@ -71,7 +71,7 @@ The WebSocket sends a token in its first frame rather than in the URL. Clients c
 ## Limitations to state clearly
 
 - No real dataset, trained model, research metrics, or real classifier detections are included.
-- PostgreSQL integration and Docker image execution have not been verified on the development host.
+- The local PostgreSQL and Docker Compose deployment are verified, but have not had a security review for public exposure; Compose publishes only the dashboard on loopback and does not configure TLS.
 - Live capture, login rate limiting, deployed TLS, and access-token revocation lists remain unimplemented or unverified.
 - A checksum detects artifact changes against its metadata but does not authenticate the artifact's author. Only load models from a trusted source.
 - Heuristic alerts can be noisy; thresholds require evaluation on authorized representative traffic.

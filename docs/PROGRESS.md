@@ -284,8 +284,8 @@ Step 9 is complete on GitHub. Step 10 is the final integration and evidence-base
 | SQLite schema | PASS | Fresh migration reaches `0002_authentication`; Alembic check reports no new operations. |
 | Command entry points | PASS | Replay, monitor, API, admin provisioning, and training help commands run. No libpcap provider is available for live capture. |
 | Compose definitions | PASS | Base stack and `demo` profile both pass `docker compose config --quiet` with transient validation-only secrets. |
-| Docker image build and service execution | BLOCKED / NOT TESTED | `docker info` is denied access to the Docker Desktop named pipe; no images or containers were run. |
-| Live PostgreSQL integration | BLOCKED | No PostgreSQL service was available on the host. SQLite integration and PostgreSQL migration rendering are not substitutes for a live service test. |
+| Docker image build and service execution | PASS in post-Step-10 runtime follow-up | Compose images built; PostgreSQL/API became healthy; dashboard is running. |
+| PostgreSQL startup, migrations, and API readiness | PASS in post-Step-10 runtime follow-up | Migration `0002_authentication (head)` and readiness response reports database available. Full auth/replay flow remains untested against PostgreSQL. |
 | Real-data model training and detection metrics | BLOCKED | No provenance-tracked labeled data or model was supplied. No model scores or research metrics are reported. |
 | Live packet capture | NOT TESTED | Npcap/libpcap is unavailable on this host; only offline replay is covered. |
 | Tracked-secret scan and Git exclusions | PASS | No credential-shaped strings found in tracked source; `.env`, PCAPs, local data/model artifacts, databases, and frontend dependencies are ignored. |
@@ -293,4 +293,19 @@ Step 9 is complete on GitHub. Step 10 is the final integration and evidence-base
 
 ### Next action
 
-The ten-step build is finished. Further validation depends on a host that can run Docker/PostgreSQL and on provenance-tracked labeled captures; no additional implementation step is planned.
+The ten-step build is finished. The later runtime follow-up resolved the local Docker/PostgreSQL deployment checks. Further research evaluation depends on provenance-tracked labeled captures; account provisioning, authorized capture replay, and security review remain operator/environment-dependent tasks. No additional implementation step is planned.
+
+## Runtime verification follow-up after Step 10 — 2026-10-22
+
+This deployment check was completed after the ten planned steps. It updates infrastructure evidence and does not add an implementation step.
+
+### Verification
+
+- Created a local `.env` with generated secrets. The file is ignored by Git; secret values were not printed or committed.
+- `docker compose up --build --detach`: PASS. Python and frontend images built, PostgreSQL started, migrations ran, and the API/dashboard started.
+- `docker compose ps --format json`: PostgreSQL and API report healthy; dashboard is running.
+- `docker compose exec -T api python -m alembic current`: PASS, PostgreSQL is at `0002_authentication (head)`.
+- `GET http://127.0.0.1:8080/`: PASS, HTTP 200 with the application root element.
+- `GET http://127.0.0.1:8080/health/ready`: PASS, HTTP 200 with `{"status":"ready","database":"available"}`.
+- The local Compose stack remains running with its persistent PostgreSQL volume. No administrator was provisioned; use the documented hidden-password command before sign-in.
+- No PCAP was replayed. No real dataset/model was present; detection-quality metrics remain unavailable and unclaimed.

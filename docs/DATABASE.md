@@ -89,10 +89,10 @@ python -m alembic upgrade head
 
 The migrations create `flows`, `predictions`, `alerts`, `users`, `refresh_sessions`, `audit_events`, and Alembic's version table. Runtime code never calls `create_all`; schema changes belong in numbered Alembic revisions. After migration, provision the first administrator with `python -m backend.app.auth_admin --username admin`; password input is hidden. Later accounts are created by an authenticated administrator through the API.
 
-PostgreSQL DDL was rendered successfully in offline migration mode. This checks migration compilation against the PostgreSQL dialect but does not replace applying it to a live server.
+PostgreSQL DDL was rendered successfully in offline migration mode. In addition, on 2026-10-22 the Compose PostgreSQL service started healthy and the API applied the migrations through `0002_authentication`; `alembic current` reported that revision as head.
 
 ## Persistence behavior
 
 `nids_engine.monitor --database-url <URL>` stores each finalized flow, its prediction status, and its alerts in one transaction. The monitor writes no flow JSON to standard output until that transaction succeeds. A failed database write stops replay and reports the number of previously completed flows; it does not claim the failed observation was saved.
 
-The API reads the same persisted records. Login, refresh rotation, and logout use database-backed sessions; only a SHA-256 digest of each refresh-token `jti` is stored. Audit events contain event and target metadata, not credentials or tokens. Alert acknowledgement updates the alert and records its actor in one transaction. No PostgreSQL server was available during Step 7, so migrations and API behavior were verified with SQLite; PostgreSQL connectivity and dialect integration remain untested.
+The API reads the same persisted records. Login, refresh rotation, and logout use database-backed sessions; only a SHA-256 digest of each refresh-token `jti` is stored. Audit events contain event and target metadata, not credentials or tokens. Alert acknowledgement updates the alert and records its actor in one transaction. PostgreSQL connectivity, migration startup, and API readiness were verified in Compose; the more detailed API/authentication behavior remains covered by SQLite integration tests.

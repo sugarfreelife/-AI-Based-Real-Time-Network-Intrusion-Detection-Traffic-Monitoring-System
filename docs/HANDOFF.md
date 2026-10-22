@@ -2,7 +2,7 @@
 
 ## Project status
 
-The planned 10-step implementation is complete and pushed on `main` in the user-provided GitHub repository. The workspace was clean and `HEAD` matched `origin/main` when the final audit began. This handoff reports software verification separately from infrastructure and research evidence.
+The planned 10-step implementation is complete and pushed on `main` in the user-provided GitHub repository. A post-completion deployment verification has now also run on this host. This handoff reports software verification separately from infrastructure and research evidence.
 
 ## Completed steps
 
@@ -29,11 +29,15 @@ The planned 10-step implementation is complete and pushed on `main` in the user-
 - Base Compose stack and optional demo profile both passed `docker compose config --quiet` with transient validation-only secrets.
 - Git ignored `.env`, captures, local datasets/models, database files, and frontend dependencies. The tracked-source scan found no strings matching common private-key or API-key formats.
 - Dashboard type, API/authentication, alert acknowledgement, and WebSocket behavior have software test coverage. The earlier local browser review confirmed sign-in and persisted synthetic fixture rows.
+- Docker Compose images built successfully, and the PostgreSQL, API, and dashboard containers started. PostgreSQL and API reported healthy status.
+- The API applied migrations through `0002_authentication`; `docker compose exec -T api python -m alembic current` reported `0002_authentication (head)`.
+- `http://127.0.0.1:8080/` and `http://127.0.0.1:8080/health/ready` returned HTTP 200. The readiness response reported `{"status":"ready","database":"available"}`.
+- Local `.env` contains generated, ignored credentials. The Compose database volume is persistent. No administrator account has been created yet.
 
 ### BLOCKED or NOT TESTED
 
-- Docker images, containers, migrations-in-container, Nginx runtime, and PCAP demo were **not tested**. `docker info` returned permission denied for the Docker Desktop Linux engine named pipe.
-- Live PostgreSQL integration is **blocked** because no service was available on the host. SQLite tests and PostgreSQL migration rendering do not establish PostgreSQL runtime behavior.
+- Container PCAP replay was **not tested** because no authorized capture was supplied. Compose image build, PostgreSQL startup, migration execution, API readiness, and dashboard HTTP are now verified.
+- Database-backed authentication and monitor persistence have not yet been exercised against PostgreSQL as a full integration path. PostgreSQL startup, migrations, and API readiness are verified; detailed API/auth behavior remains covered by SQLite integration tests.
 - Real dataset training, model quality, attack-class recall, and real traffic alert accuracy are **blocked** because no provenance-tracked labeled capture set or trusted model was supplied.
 - Live packet capture is **not tested** because Npcap/libpcap support is unavailable.
 - The final browser-level live WebSocket indicator was not rechecked after adding the WebSocket runtime package. Authenticated WebSocket protocol behavior is covered by backend tests.
@@ -56,9 +60,9 @@ No research metrics or real classifier detection claims should be made from thes
 
 ## External work needed for stronger claims
 
-1. On a host with a functioning Docker Engine, run the commands in [DEPLOYMENT.md](DEPLOYMENT.md), verify all services, and replay an authorized capture.
-2. Verify the PostgreSQL-backed behavior with that service; do not substitute SQLite results for this check.
-3. Obtain licensed, provenance-tracked data with verified labels and independent capture groups; train and report the held-out results using [ML_METHODOLOGY.md](ML_METHODOLOGY.md).
+1. Provision the first administrator using the hidden-password command in [DEPLOYMENT.md](DEPLOYMENT.md), then sign in at <http://127.0.0.1:8080>.
+2. If desired, replay an authorized capture through the documented offline monitor workflow.
+3. Obtain licensed, provenance-tracked data with verified labels and independent capture groups; train and report held-out results using [ML_METHODOLOGY.md](ML_METHODOLOGY.md).
 4. Review login rate limiting, TLS, token revocation policy, and deployment exposure before any non-local deployment.
 
-These are environment/data-dependent validations, not additional implementation steps in the completed 10-step plan.
+These are remaining setup, environment, and data-dependent tasks, not additional implementation steps in the completed 10-step plan. The verified local Compose stack is currently running; `docker compose down` stops it while retaining the database volume.
