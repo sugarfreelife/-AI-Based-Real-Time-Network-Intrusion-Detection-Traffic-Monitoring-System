@@ -14,6 +14,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import sklearn
+from joblib import __version__ as joblib_version
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
@@ -21,7 +22,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from ml.data.loader import DatasetBundle, load_feature_dataset
-from ml.data.manifest import DatasetManifest
+from ml.data.manifest import DatasetManifest, sha256_file
 from ml.evaluation.metrics import classification_metrics
 from ml.training.split import DatasetSplit, split_by_capture_group
 from nids_engine.features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
@@ -179,6 +180,8 @@ def train_and_evaluate(
         **test_metrics,
     }
     joblib.dump(selected_pipeline, artifact)
+    metadata["model_artifact_sha256"] = sha256_file(artifact)
+    metadata["joblib_version"] = joblib_version
     metadata_path.write_text(json.dumps(metadata, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     evaluation_path.write_text(json.dumps(evaluation, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     return {

@@ -16,9 +16,10 @@ ml = ["numpy==2.4.5", "pandas==3.0.6", "scikit-learn==1.9.1", "joblib==1.6.0"]
 
 [project.scripts]
 nids-replay = "nids_engine.replay:main"
+nids-monitor = "nids_engine.monitor:main"
 
 [tool.setuptools.packages.find]
-include = ["nids_engine*"]
+include = ["nids_engine*", "ml*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

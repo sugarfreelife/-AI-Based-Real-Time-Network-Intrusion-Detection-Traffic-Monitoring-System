@@ -21,6 +21,8 @@ CICIDS2017 is an acquisition candidate, not a drop-in training table: the offici
 
 ## Models and reporting
 
-The baseline is class-weighted Logistic Regression. The comparison model is a class-weighted Random Forest. Saved metadata includes model/schema version, feature order, dataset name and checksum, upstream checksums when known, class counts, split strategy and group counts, random seed, package versions, configuration, and measured durations. The held-out report includes accuracy, macro precision/recall/F1, per-class metrics, support, and a confusion matrix.
+The baseline is class-weighted Logistic Regression. The comparison model is a class-weighted Random Forest. Saved metadata includes model/schema version, feature order, dataset name and checksum, upstream checksums when known, class counts, split strategy and group counts, random seed, package versions, model artifact SHA-256, configuration, and measured durations. Inference checks the artifact checksum and exact scikit-learn/joblib versions before deserialization, then checks fitted feature order and class names. A checksum detects changes against the sidecar but is not a signature; load only artifacts whose source the operator trusts because joblib deserializes Python objects. The held-out report includes accuracy, macro precision/recall/F1, per-class metrics, support, and a confusion matrix.
+
+The current estimators do not produce calibrated probabilities. Inference reports only the predicted class and does not expose a confidence score.
 
 No metrics are available until real labeled capture groups are prepared. Offline performance does not establish equivalent performance on live traffic; dataset-to-live distribution shift and ground-truth quality must be discussed.

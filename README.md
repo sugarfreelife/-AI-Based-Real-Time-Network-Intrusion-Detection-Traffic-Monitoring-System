@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 4 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, build deterministic bidirectional flows, extract versioned numeric features, export labeled features from authorized captures, and train/evaluate models from schema-compatible CSVs. No real dataset or trained model is included, so no research metrics are claimed. Inference integration, persistence, API, authentication, WebSockets, and dashboard features are not implemented yet.
+This repository is at Step 5 of a 10-step implementation plan. It can parse packet metadata from PCAP/PCAPNG files, build deterministic bidirectional flows, extract versioned numeric features, prepare labeled feature tables, train/evaluate compatible models, replay traffic through optional inference, and emit explainable alerts. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL persistence, REST APIs, authentication, WebSockets, and the dashboard remain planned.
 
 ## Planned technology
 
@@ -36,7 +36,17 @@ The command emits one JSON metadata record per packet and a capture summary. Pac
 python -m nids_engine.replay --live "INTERFACE NAME" --protocol TCP
 ```
 
-Run the packet ingestion tests with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For later services, copy `.env.example` to `.env` and supply local values; never commit `.env`.
+Replay an authorized PCAP through flow processing and heuristic alerts (works without a trained model):
+
+```powershell
+python -m nids_engine.monitor `
+  --pcap .\path\to\authorized-capture.pcap `
+  --syn-burst-threshold 20
+```
+
+Add `--model .\ml\models\nids-model.joblib` to enable classifier output. The model must have its matching metadata sidecar and must be a trusted artifact produced by this project's training pipeline. Output flow records and alerts are JSON lines on standard output; the capture summary is written to standard error. Rule alerts remain available when model loading is missing or incompatible. See [docs/DETECTION.md](docs/DETECTION.md) for rule definitions and limitations.
+
+Run the test suite with `python -m pytest`. Environment findings and current constraints are tracked in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md). For later services, copy `.env.example` to `.env` and supply local values; never commit `.env`.
 
 The ordered inference inputs and missing-value rules are documented in [docs/FEATURE_SCHEMA.md](docs/FEATURE_SCHEMA.md).
 

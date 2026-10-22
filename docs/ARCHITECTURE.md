@@ -2,7 +2,7 @@
 
 ## Status
 
-The full diagram is the planned architecture. As of Step 2, the packet metadata parser, streaming PCAP/PCAPNG replay, protocol filtering, and optional explicit-interface live capture adapter are implemented. Flow building, ML, persistence, backend, realtime delivery, and dashboard services remain planned.
+The full diagram is the planned architecture. Through Step 5, packet ingestion, flow building, shared features, dataset/training tools, optional model inference, and explainable rule/model alerts are implemented. PostgreSQL persistence, backend APIs, access control, realtime delivery, and the dashboard remain planned.
 
 ## Target data flow
 
@@ -32,7 +32,7 @@ flowchart LR
 
 ## Failure handling goals
 
-Bound queues and flow state; make replay deterministic; report parser failures; handle missing models without fabricating detections; preserve persisted alerts when WebSocket clients disconnect; and report database unavailability as degraded readiness. These behaviors remain planned until implemented and tested.
+Bound queues and flow state; make replay deterministic; report parser failures; keep model-unavailable status explicit while allowing independent rules; preserve persisted alerts when WebSocket clients disconnect; and report database unavailability as degraded readiness. The first four behaviors are implemented through Step 5; persistence and service failure handling remain planned.
 
 ## Implemented in Step 2
 
@@ -45,3 +45,7 @@ Bound queues and flow state; make replay deterministic; report parser failures; 
 ## Implemented in Step 4
 
 `ml.data.export_features` replays an authorized PCAP through the same flow and feature code and offers a blank flow-label template; labels are never inferred from predictions. `ml.data.loader` validates exact schema, finite values, provenance checksum, and labels, and removes exact duplicate feature/label rows. `ml.training.split` separates whole capture groups into train/validation/test. `ml.training.train` compares Logistic Regression and Random Forest, selects by validation macro-F1, evaluates the chosen model once on held-out groups, and writes a trusted-project artifact plus metadata and metrics. Real model availability remains blocked until real labeled captures are provided.
+
+## Implemented in Step 5
+
+`nids_engine.inference` validates model metadata, exact feature ordering, runtime versions, and the model file checksum before loading a project pipeline. Predictions contain the class and model/schema versions but no probability because the trained estimators are not calibrated. Missing or incompatible artifacts produce explicit unscored statuses. `nids_engine.detection` separates model-class alerts from transparent threshold heuristics, includes evidence and severity, and bounds duplicate-alert state. `nids_engine.monitor` connects offline PCAP replay to flows, features, optional inference, and JSON-line alerts. A missing model leaves heuristic alerts usable; a real trained model remains unavailable until labeled data is supplied.

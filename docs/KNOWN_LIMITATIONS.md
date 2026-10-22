@@ -5,12 +5,12 @@ This list reflects the Step 1 audit and will be updated with evidence as the pro
 | Item | Status | Evidence / recovery |
 |---|---|---|
 | GitHub destination | CONFIGURED | `origin` points to the user-provided repository; Step 1 commit `cad3edf` was pushed to `main`. |
-| Scapy and ML/data libraries | RESOLVED FOR LOCAL STEPS 2–4 | Scapy 2.8.0, NumPy 2.4.5, pandas 3.0.6, scikit-learn 1.9.1, and their locked dependencies are installed in the ignored project `.venv`. |
+| Scapy and ML/data libraries | RESOLVED FOR LOCAL STEPS 2–5 | Scapy 2.8.0, NumPy 2.4.5, pandas 3.0.6, scikit-learn 1.9.1, and their locked dependencies are installed in the ignored project `.venv`. |
 | Live packet capture | NOT AVAILABLE / unverified | The Npcap service and libpcap provider were not detected. Offline PCAP/PCAPNG replay works; live capture requires an authorized interface and supported packet-capture driver. |
 | Docker services | BLOCKED in this session | Docker CLI is present, but connection to the Docker Desktop Linux engine returned permission denied for its named pipe. |
 | PostgreSQL | NOT TESTED | `psql` is unavailable and server availability is unknown. Database integration remains unverified until a reachable PostgreSQL service exists. |
 | Dataset and trained model | NOT PROVIDED | No dataset or model was present in the empty workspace. No model metrics or supported attack classes can be claimed until data is acquired and evaluated. |
-| Full NIDS application | INCOMPLETE | Packet ingestion, flow construction, features, and training infrastructure are implemented through Step 4. No real model is trained; inference, detection, database, API, authentication, WebSockets, and dashboard work remain planned. |
-| Python environment bootstrap | DEGRADED | `python -m venv` failed during `ensurepip` because the base Python launcher reports that it cannot resolve `C:\Python314\python.exe`. The local `.venv` executable can run after pinned packages were installed into its site-packages. |
+| Full NIDS application | INCOMPLETE | Packet ingestion, flow construction, features, data/training infrastructure, optional inference, and rule/model alerts are implemented through Step 5. No real model is trained; persistence, API, authentication, WebSockets, and dashboard work remain planned. |
+| Python environment bootstrap | DEGRADED | `python -m venv` failed during `ensurepip` because the base Python launcher reports that it cannot resolve `C:\Python314\python.exe`. The partial local `.venv` can run the installed project modules, but has no `pip` module. Installing the project entry-point scripts was not verified; a targeted install also hit a permission error in the sandbox temporary directory. |
 
 No packet captures, datasets, credentials, or generated model artifacts should be committed.

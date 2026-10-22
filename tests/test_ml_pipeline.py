@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -14,7 +15,12 @@ from ml.data.loader import DatasetValidationError, load_feature_dataset
 from ml.data.manifest import DatasetManifest, build_manifest, write_manifest
 from ml.training.split import split_by_capture_group
 from ml.training.train import train_and_evaluate
+from nids_engine.detection import AlertDeduplicator, AlertEngine
 from nids_engine.features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
+from nids_engine.flows import FlowBuilder
+from nids_engine.inference import InferenceEngine, ModelArtifactStatus, PredictionResult, load_trusted_model
+from nids_engine.monitor import main as monitor_main
+from nids_engine.packet import PacketMetadata
 
 
 CLASSES = ("BENIGN", "ATTACK_A", "ATTACK_B")
@@ -186,6 +192,171 @@ def test_training_saves_metadata_and_heldout_report(tmp_path) -> None:
     assert set(evaluation["classes"]) == set(CLASSES)
     assert set(evaluation["support"]) == set(CLASSES)
     assert result["model_version"] == evaluation["model_version"]
+    assert metadata["model_artifact_sha256"]
+    assert metadata["joblib_version"]
+
+    model = load_trusted_model(artifact)
+    assert model.model_version == result["model_version"]
+    flow = _make_flow()
+    prediction = InferenceEngine.from_path(artifact).predict(flow)
+    assert prediction.status == "scored"
+    assert prediction.predicted_label in CLASSES
+
+
+def _make_flow(*, syn_count: int = 1, start_second: int = 1_700_000_000):
+    builder = FlowBuilder()
+    for index in range(syn_count):
+        builder.process(PacketMetadata(
+            timestamp=datetime.fromtimestamp(start_second + index, tz=UTC),
+            src_ip="192.0.2.10",
+            dst_ip="198.51.100.20",
+            src_port=41000,
+            dst_port=443,
+            protocol="TCP",
+            packet_length=60,
+            ip_version=4,
+            tcp_flags=0x02,
+        ))
+    [flow] = builder.flush()
+    return flow
+
+
+def _prediction(flow_id: str, status: str, label: str | None = None) -> PredictionResult:
+    return PredictionResult(
+        flow_id=flow_id,
+        status=status,
+        predicted_label=label,
+        model_version="test-model" if status == "scored" else None,
+        feature_schema_version=FEATURE_SCHEMA_VERSION,
+        predicted_at_utc=datetime.now(UTC).isoformat(),
+    )
+
+
+def test_missing_or_incompatible_models_return_explicit_status(tmp_path) -> None:
+    flow = _make_flow()
+    missing = InferenceEngine.from_path(tmp_path / "missing.joblib")
+    result = missing.predict(flow)
+    assert missing.status == ModelArtifactStatus.MISSING.value
+    assert result.status == ModelArtifactStatus.MISSING.value
+    assert result.predicted_label is None
+    assert result.reason == "model_unavailable"
+
+    artifact = tmp_path / "invalid.joblib"
+    artifact.write_bytes(b"not deserialized because schema is incompatible")
+    metadata_path = artifact.with_suffix(".joblib.metadata.json")
+    metadata_path.write_text(json.dumps({
+        "model_version": "old-model",
+        "selected_model": "logistic_regression",
+        "feature_schema_version": "0.9",
+        "feature_names": list(FEATURE_NAMES),
+        "classes": list(CLASSES),
+        "model_artifact_sha256": "0" * 64,
+        "artifact_trust": "Load only artifacts produced and verified by this project.",
+        "scikit_learn_version": "not-reached",
+        "joblib_version": "not-reached",
+    }), encoding="utf-8")
+    incompatible = InferenceEngine.from_path(artifact)
+    assert incompatible.status == ModelArtifactStatus.INCOMPATIBLE.value
+    assert incompatible.predict(flow).status == ModelArtifactStatus.INCOMPATIBLE.value
+
+
+def test_model_checksum_rejects_changed_artifact(tmp_path) -> None:
+    path = fixture_csv(tmp_path)
+    dataset = load_feature_dataset(path, manifest_for(path))
+    artifact = tmp_path / "models" / "fixture.joblib"
+    train_and_evaluate(dataset, artifact, random_seed=23)
+    with artifact.open("ab") as output:
+        output.write(b"changed")
+
+    engine = InferenceEngine.from_path(artifact)
+    assert engine.status == ModelArtifactStatus.CORRUPT.value
+
+
+def test_alert_engine_explains_model_and_rule_alerts_and_suppresses_duplicates() -> None:
+    flow = _make_flow(syn_count=3)
+    engine = AlertEngine(
+        benign_labels=("BENIGN",),
+        syn_burst_threshold=3,
+        high_packet_rate_threshold=1_000_000_000,
+        deduplicator=AlertDeduplicator(max_entries=4),
+    )
+    alerts = engine.evaluate(flow, _prediction(flow.flow_id, "scored", "ATTACK_A"))
+    assert [alert.detection_code for alert in alerts] == ["ml_classification:ATTACK_A", "tcp_syn_burst"]
+    assert all(alert.explanation and alert.evidence for alert in alerts)
+    assert alerts[0].model_version == "test-model"
+    assert alerts[1].evidence == {"tcp_syn_count": 3, "tcp_ack_count": 0, "threshold": 3}
+
+    duplicate_flow = _make_flow(syn_count=3)
+    repeated = engine.evaluate(duplicate_flow, _prediction(duplicate_flow.flow_id, "scored", "ATTACK_A"))
+    assert repeated == []
+    assert engine.suppressed_count == 2
+
+
+def test_benign_predictions_do_not_create_ml_alerts_and_rules_work_without_model() -> None:
+    flow = _make_flow(syn_count=3)
+    engine = AlertEngine(syn_burst_threshold=3, high_packet_rate_threshold=1_000_000_000)
+    benign_alerts = engine.evaluate(flow, _prediction(flow.flow_id, "scored", "BENIGN"))
+    assert [alert.detection_code for alert in benign_alerts] == ["tcp_syn_burst"]
+
+    unavailable_alerts = engine.evaluate(
+        flow,
+        _prediction(flow.flow_id, ModelArtifactStatus.MISSING.value),
+    )
+    assert unavailable_alerts == []
+
+
+def test_monitor_replays_pcap_through_rule_alerts_without_a_model(tmp_path, capsys) -> None:
+    pcap_path = tmp_path / "syn-burst.pcap"
+    wrpcap(
+        str(pcap_path),
+        [IP(src="192.0.2.10", dst="198.51.100.20") / TCP(sport=41000, dport=443, flags="S") for _ in range(3)],
+    )
+
+    result = monitor_main([
+        "--pcap", str(pcap_path),
+        "--syn-burst-threshold", "3",
+        "--high-packets-per-second", "1000000000",
+    ])
+
+    captured = capsys.readouterr()
+    record = json.loads(captured.out.strip().splitlines()[0])
+    summary = json.loads(captured.err.strip())["monitor_summary"]
+    assert result == 0
+    assert record["prediction"]["status"] == ModelArtifactStatus.MISSING.value
+    assert [alert["detection_code"] for alert in record["alerts"]] == ["tcp_syn_burst"]
+    assert summary["flows"] == 1
+    assert summary["unscored"] == 1
+    assert summary["prediction_status_counts"] == {ModelArtifactStatus.MISSING.value: 1}
+    assert summary["model_status"] == ModelArtifactStatus.MISSING.value
+
+
+def test_monitor_connects_pcap_inference_to_model_alerts(tmp_path, capsys) -> None:
+    csv_path = fixture_csv(tmp_path)
+    dataset = load_feature_dataset(csv_path, manifest_for(csv_path))
+    artifact = tmp_path / "models" / "fixture.joblib"
+    train_and_evaluate(dataset, artifact, random_seed=23)
+    pcap_path = tmp_path / "one-flow.pcap"
+    wrpcap(
+        str(pcap_path),
+        [IP(src="192.0.2.10", dst="198.51.100.20") / TCP(sport=41000, dport=443, flags="S")],
+    )
+
+    result = monitor_main([
+        "--pcap", str(pcap_path),
+        "--model", str(artifact),
+        "--benign-label", "NO_TRAINED_CLASS_HAS_THIS_NAME",
+        "--high-packets-per-second", "1000000000",
+    ])
+
+    captured = capsys.readouterr()
+    record = json.loads(captured.out.strip().splitlines()[0])
+    assert result == 0
+    assert record["prediction"]["status"] == "scored"
+    assert record["prediction"]["model_version"]
+    assert record["alerts"][0]["source"] == "machine_learning"
+    assert record["alerts"][0]["detection_code"] == (
+        f"ml_classification:{record['prediction']['predicted_label']}"
+    )
 
 
 def test_export_requires_complete_ground_truth_and_preserves_capture_group(tmp_path) -> None:

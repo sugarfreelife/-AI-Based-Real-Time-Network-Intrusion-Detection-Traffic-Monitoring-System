@@ -124,4 +124,34 @@ Step 3 is complete on GitHub. The next task is Step 4 (dataset and training pipe
 
 ### Next task
 
-Step 4 is ready for its required commit and GitHub push. Next implement trusted model loading, schema compatibility checks, inference output, and explainable detection/alert rules in Step 5.
+Step 4 commit `fef5845` was pushed to `origin/main`. Next implement trusted model loading, schema compatibility checks, inference output, and explainable detection/alert rules in Step 5.
+
+## Step 5 of 10 — Inference and explainable alerts
+
+**Status:** Implemented and verified locally; commit and push are pending. Real model detections are blocked because no real labeled dataset/model was supplied.
+
+### Delivered
+
+- Project model metadata includes artifact SHA-256 and joblib version. The loader checks its sidecar, checksum, feature schema/order, supported pipeline/classifier type, fitted class names, and scikit-learn/joblib versions before allowing inference.
+- Missing, invalid, incompatible, checksum-mismatched, feature-rejected, and inference-error outcomes are explicit. The monitor continues in rule-only mode when a model is absent or unusable.
+- Predictions record the class, model version, schema version, UTC time, and status. No confidence/probability is reported because the current estimators are not calibrated.
+- Explainable model-class alerts and two review rules: TCP SYN burst and high per-flow packet rate. Alerts include stable codes, severity, endpoints, timestamps, model version where applicable, and threshold evidence.
+- Bounded, 60-second process-local duplicate suppression for matching detection/protocol/endpoint signatures.
+- `python -m nids_engine.monitor` streams authorized PCAPs through flow processing, optional inference, and alert output as JSON lines.
+- `docs/DETECTION.md` documents operation, rules, false-positive limitations, and artifact trust requirements.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest`: PASS, 42 tests.
+- `.venv\Scripts\python.exe -m compileall -q ml nids_engine tests`: PASS.
+- `.venv\Scripts\python.exe -m nids_engine.monitor --help`: PASS.
+- Controlled PCAP monitor replay in rule-only mode: PASS.
+- Controlled PCAP-to-model-inference-to-alert run with a synthetic training fixture: PASS; this verifies wiring only, not model quality.
+- Synthetic-fixture trained artifact load and prediction, incompatible schema rejection, and checksum mismatch rejection: PASS.
+- Packaged `nids-monitor` installation: NOT VERIFIED. The partial `.venv` has no `pip` module; a targeted install attempt hit a sandbox temporary-directory permission error. The verified `python -m nids_engine.monitor` invocation works.
+- `git diff --check`: PASS.
+- Real model inference and alert quality: BLOCKED until a real labeled dataset and evaluated model are supplied.
+
+### Next task
+
+After Step 5 is committed and pushed, implement PostgreSQL persistence and a validated REST API in Step 6.
