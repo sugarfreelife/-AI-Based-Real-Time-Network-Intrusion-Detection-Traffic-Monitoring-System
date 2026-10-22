@@ -70,7 +70,7 @@ Step 2 is complete on GitHub. The next task is Step 3 (bidirectional flows and v
 
 ## Step 3 of 10 — Bidirectional flows and feature schema
 
-**Status:** Implemented and verified locally; commit and push are pending.
+**Status:** Implemented, verified, committed as `85324ba`, and pushed to `origin/main`.
 
 ### Delivered
 
@@ -91,4 +91,37 @@ Step 2 is complete on GitHub. The next task is Step 3 (bidirectional flows and v
 
 ### Next task
 
-Add documented dataset handling and a reproducible training/evaluation pipeline in Step 4. Do not report model metrics until a real, provenance-tracked dataset is supplied and evaluated.
+Step 3 is complete on GitHub. The next task is Step 4 (dataset and training pipeline).
+
+## Step 4 of 10 — Dataset preparation and model evaluation
+
+**Status:** Pipeline implemented and verified locally; commit and push are pending. Real dataset evaluation is blocked because no dataset or labels were supplied.
+
+### Delivered
+
+- PCAP-to-flow feature export using the same `FlowBuilder` and feature schema as inference, plus blank label templates so labels are supplied from ground truth.
+- Combining per-capture CSVs and generating a provenance manifest with a prepared-data SHA-256 and optional upstream checksums.
+- Strict numeric/schema/range/rate validation, missing-label and capture-group checks, exact duplicate removal, and rejection of conflicting labels or unexpected identifier columns.
+- Deterministic two-stage `GroupShuffleSplit` with no capture-group overlap and all classes required in each split.
+- Class-weighted Logistic Regression and Random Forest comparison; validation macro-F1 selects the model, and the held-out test groups are scored once.
+- Saved trusted-project joblib model, provenance/configuration metadata, measured timings, and per-class/test metrics when training is run on a supplied dataset.
+- Dataset acquisition instructions cite the official CICIDS2017 source and warn that its 80+ CICFlowMeter features do not directly match this project's schema. No dataset was downloaded.
+- Model binaries and generated evaluation files are excluded from Git.
+- CSV combination and label export reject destructive output paths; combined CSV output is written atomically so a rejected input does not leave a partial destination.
+
+### Verification
+
+- `.venv\Scripts\python.exe -m pytest`: PASS, 36 tests.
+- `.venv\Scripts\python.exe -m compileall -q ml nids_engine tests`: PASS.
+- `.venv\Scripts\python.exe -m ml.data.export_features --help`: PASS.
+- `.venv\Scripts\python.exe -m ml.data.combine_features --help`: PASS.
+- `.venv\Scripts\python.exe -m ml.data.manifest --help`: PASS.
+- `.venv\Scripts\python.exe -m ml.training.train --help`: PASS.
+- `git diff --check`: PASS.
+- Destructive-path and atomic-output regression coverage: PASS.
+- Training was exercised only with labeled synthetic test fixtures. Their metrics are not real dataset results and are not included as project evaluation results.
+- No dataset/model: BLOCKED pending a provenance-tracked feature CSV with ground-truth labels and at least five independent capture groups.
+
+### Next task
+
+Step 4 is ready for its required commit and GitHub push. Next implement trusted model loading, schema compatibility checks, inference output, and explainable detection/alert rules in Step 5.

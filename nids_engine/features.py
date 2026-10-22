@@ -43,6 +43,45 @@ FEATURE_NAMES: tuple[str, ...] = (
     "reverse_packet_size_max",
     "reverse_packet_size_missing",
 )
+INTEGER_FEATURE_NAMES: tuple[str, ...] = (
+    "total_packets",
+    "total_bytes",
+    "forward_packets",
+    "reverse_packets",
+    "forward_bytes",
+    "reverse_bytes",
+    "min_packet_size",
+    "max_packet_size",
+    "endpoint_a_port",
+    "endpoint_b_port",
+    "tcp_syn_count",
+    "tcp_ack_count",
+    "tcp_fin_count",
+    "tcp_rst_count",
+    "tcp_psh_count",
+    "forward_packet_size_min",
+    "forward_packet_size_max",
+    "reverse_packet_size_min",
+    "reverse_packet_size_max",
+)
+BINARY_FEATURE_NAMES: tuple[str, ...] = (
+    "protocol_tcp",
+    "protocol_udp",
+    "protocol_icmp",
+    "protocol_icmpv6",
+    "protocol_other",
+    "endpoint_a_port_missing",
+    "endpoint_b_port_missing",
+    "forward_packet_size_missing",
+    "reverse_packet_size_missing",
+)
+PROTOCOL_FEATURE_NAMES: tuple[str, ...] = (
+    "protocol_tcp",
+    "protocol_udp",
+    "protocol_icmp",
+    "protocol_icmpv6",
+    "protocol_other",
+)
 
 
 class FeatureSchemaError(ValueError):
@@ -71,47 +110,14 @@ class FeatureVector:
         if any(value < 0 for value in self.values):
             raise FeatureSchemaError("feature vector contains a negative value")
         feature_values = dict(zip(self.feature_names, self.values, strict=True))
-        integer_names = (
-            "total_packets",
-            "total_bytes",
-            "forward_packets",
-            "reverse_packets",
-            "forward_bytes",
-            "reverse_bytes",
-            "min_packet_size",
-            "max_packet_size",
-            "endpoint_a_port",
-            "endpoint_b_port",
-            "tcp_syn_count",
-            "tcp_ack_count",
-            "tcp_fin_count",
-            "tcp_rst_count",
-            "tcp_psh_count",
-            "forward_packet_size_min",
-            "forward_packet_size_max",
-            "reverse_packet_size_min",
-            "reverse_packet_size_max",
-        )
-        if any(feature_values[name] != int(feature_values[name]) for name in integer_names):
+        if any(feature_values[name] != int(feature_values[name]) for name in INTEGER_FEATURE_NAMES):
             raise FeatureSchemaError("count, size, and port features must be integer-valued")
         for name in ("endpoint_a_port", "endpoint_b_port"):
             if feature_values[name] > 65535:
                 raise FeatureSchemaError(f"{name} is outside the valid port range")
-        binary_names = (
-            "protocol_tcp",
-            "protocol_udp",
-            "protocol_icmp",
-            "protocol_icmpv6",
-            "protocol_other",
-            "endpoint_a_port_missing",
-            "endpoint_b_port_missing",
-            "forward_packet_size_missing",
-            "reverse_packet_size_missing",
-        )
-        if any(feature_values[name] not in (0, 1) for name in binary_names):
+        if any(feature_values[name] not in (0, 1) for name in BINARY_FEATURE_NAMES):
             raise FeatureSchemaError("binary schema features must be 0 or 1")
-        protocol_names = ("protocol_tcp", "protocol_udp", "protocol_icmp", "protocol_icmpv6", "protocol_other")
-        if sum(feature_values[name] for name in protocol_names) != 1:
+        if sum(feature_values[name] for name in PROTOCOL_FEATURE_NAMES) != 1:
             raise FeatureSchemaError("exactly one protocol feature must be set")
         if feature_values["total_packets"] != feature_values["forward_packets"] + feature_values["reverse_packets"]:
             raise FeatureSchemaError("total_packets must equal the directional packet counts")

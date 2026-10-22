@@ -2,7 +2,7 @@
 
 ## Current result
 
-Step 1 began with no application code or test suite. Step 2 adds packet ingestion tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
+Step 1 began with no application code or test suite. Steps 2–4 add packet, flow, feature, and dataset/training tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
 The Docker CLI is installed, but its engine is inaccessible from this session because access to the Docker Desktop named pipe was denied. PostgreSQL integration checks are therefore not yet available.
 
@@ -21,5 +21,12 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 3 | Flow and feature unit suite | PASS, 25 total tests via `.venv\Scripts\python.exe -m pytest` |
 | 3 | Python bytecode compilation | PASS via `.venv\Scripts\python.exe -m compileall -q nids_engine tests` |
 | 3 | Patch whitespace check | PASS via `git diff --check` |
+| 4 | Full packet/flow/feature/dataset/training unit suite | PASS, 36 tests via `.venv\Scripts\python.exe -m pytest` |
+| 4 | Python bytecode compilation | PASS via `.venv\Scripts\python.exe -m compileall -q ml nids_engine tests` |
+| 4 | Export, combine, manifest, and training CLI help | PASS |
+| 4 | CSV overwrite/partial-output protections | PASS, regression test |
+| 4 | Real dataset model evaluation | BLOCKED; no real dataset or verified labels were supplied |
+
+The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 
 Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.

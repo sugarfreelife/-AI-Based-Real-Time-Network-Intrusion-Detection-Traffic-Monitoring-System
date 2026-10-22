@@ -19,6 +19,10 @@ dist/
 # Local datasets, packet captures, and generated models
 datasets/
 data/local/
+ml/data/raw/
+ml/data/derived/
+ml/models/*
+!ml/models/README.md
 pcaps/*
 !pcaps/README.md
 *.pcap
