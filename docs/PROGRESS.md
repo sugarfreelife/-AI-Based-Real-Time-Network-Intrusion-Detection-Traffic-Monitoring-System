@@ -214,7 +214,7 @@ Step 7 is complete on GitHub. Next implement the authenticated dashboard in Step
 
 ## Step 8 of 10 — Authenticated dashboard
 
-**Status:** Implemented and verified locally. Ready for the Step 8 commit and push.
+**Status:** Implemented, verified, committed as `d6076f6`, and pushed to `origin/main`.
 
 ### Delivered
 
@@ -236,4 +236,30 @@ Step 7 is complete on GitHub. Next implement the authenticated dashboard in Step
 
 ### Next task
 
-After the Step 8 checkpoint is committed and pushed, continue with Step 9 (reproducible operation and documentation).
+Step 8 is complete on GitHub. Step 9 covers reproducible operation and documentation.
+
+## Step 9 of 10 — Reproducible operation and academic handoff
+
+**Status:** Compose configuration and handoff documentation are implemented and locally validated. Container runtime verification is blocked because this host cannot access the Docker Desktop engine.
+
+### Delivered
+
+- Added a Compose stack with PostgreSQL 17, an API service that waits for database health and applies migrations, a loopback-only dashboard with REST/health/WebSocket reverse proxying, and an optional one-shot PCAP monitor profile.
+- Added version-specific Python, Node, Nginx, and PostgreSQL image tags, lock-file installs, health checks, persistent database storage, a non-root API user, and a `.dockerignore` that excludes secrets, local captures, datasets, and model artifacts from image build context.
+- Added `.env.example` variables and instructions for local secrets, service startup, first-admin provisioning, authorized PCAP replay, and optional trusted-model use.
+- Added `docs/DEPLOYMENT.md`, `docs/VIVA_GUIDE.md`, and `docs/REPORT_OUTLINE.md`. The report outline explicitly separates measured results, software fixture checks, blocked work, and untested claims.
+- Updated the README, known limitations, and testing record. Existing API, database, detection, feature schema, and ML methodology documentation remains linked from the deployment and project guides.
+
+### Verification
+
+- `docker compose config --quiet` with throwaway validation-only secret values: PASS.
+- `docker compose --profile demo config --quiet` with throwaway validation-only secret values: PASS; the optional monitor profile parses.
+- Compose service listing includes PostgreSQL, API, dashboard, and the optional monitor. No validation-only secret was written to a file or printed.
+- `git diff --check`: PASS.
+- `docker info --format '{{.ServerVersion}}'`: BLOCKED; Docker Desktop engine access returned permission denied for `dockerDesktopLinuxEngine`.
+- Image builds, service startup, container migration execution, Nginx runtime configuration, PostgreSQL integration, and the container PCAP replay: NOT TESTED because the engine is inaccessible. Configuration parsing is not reported as runtime verification.
+- No default/sample observations are loaded. An empty dashboard remains the expected state until a user provisions an account and replays an authorized capture.
+
+### Next task
+
+After the Step 9 checkpoint is committed and pushed, perform Step 10 integration checks and complete the evidence-based handoff.

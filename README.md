@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-This repository is at Step 8 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, serve authenticated REST reads, acknowledge alerts by role, stream persisted alerts over authenticated WebSockets, and present persisted records in an authenticated dashboard. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL deployment is implemented but not tested on this host; SQLite migration/API checks pass. Container deployment and academic handoff remain planned.
+This repository is at Step 9 of a 10-step implementation plan. It can parse PCAP/PCAPNG metadata, build bidirectional flows, extract versioned features, prepare labeled data, train compatible models, replay through optional inference, emit explainable alerts, persist observations, serve authenticated REST reads, acknowledge alerts by role, stream persisted alerts over authenticated WebSockets, and present persisted records in an authenticated dashboard. A local Docker Compose stack, offline replay workflow, and academic report/viva guides are documented. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. PostgreSQL and container runtime integration could not be exercised on this host; SQLite migration/API and Compose configuration checks pass.
 
 ## Planned technology
 
@@ -71,3 +71,5 @@ The ordered inference inputs and missing-value rules are documented in [docs/FEA
 For labeled capture preparation and training commands, see [ml/data/README.md](ml/data/README.md) and [docs/ML_METHODOLOGY.md](docs/ML_METHODOLOGY.md). Dataset and generated model files are excluded from Git.
 
 For database migrations, authentication, API filters, role permissions, and the WebSocket protocol, see [docs/DATABASE.md](docs/DATABASE.md) and [docs/API.md](docs/API.md).
+
+For the local PostgreSQL/API/dashboard stack and authorized PCAP demo, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Academic handoff material is in [docs/VIVA_GUIDE.md](docs/VIVA_GUIDE.md) and [docs/REPORT_OUTLINE.md](docs/REPORT_OUTLINE.md).

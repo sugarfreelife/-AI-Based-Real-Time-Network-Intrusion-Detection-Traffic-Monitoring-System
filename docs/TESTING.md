@@ -41,11 +41,23 @@ The Docker CLI is installed, but its engine is inaccessible from this session be
 | 6 | Monitor-to-database-to-API persistence | PASS, SQLite integration test |
 | 6 | PostgreSQL server integration | BLOCKED; no local listener on 5432 and `psql` is unavailable |
 | 6 | API CLI help and Alembic history | PASS |
+| 7 | Authentication, role permissions, refresh-token lifecycle, and WebSocket behavior | PASS, covered by the 59-test Step 7 suite |
+| 8 | Python integration/unit suite | PASS, 60 tests |
+| 8 | Dashboard type check, frontend tests, and production build | PASS; 5 frontend tests |
+| 8 | Strict UI audit and design contract lint | PASS; 0 audit findings and 0 lint warnings |
+| 9 | `docker compose config --quiet` | PASS with throwaway validation-only secrets |
+| 9 | `docker compose --profile demo config --quiet` | PASS; the optional monitor service parses |
+| 9 | Docker image builds and service startup | BLOCKED; access to the Docker Desktop Linux engine named pipe is denied |
+| 9 | PostgreSQL-backed container PCAP demo | NOT TESTED; requires the Docker engine and an authorized capture |
 
 The Step 4 training test uses a clearly synthetic fixture to verify software behavior and artifact shape. Its scores are not model results and must not be reported as research performance.
 
 Step 5 also uses a synthetic fixture to verify that a trusted pipeline can be loaded and called. It does not establish model quality on real traffic. Heuristic alerts verify rule behavior only; they are review signals, not proof of compromise.
 
 Step 6 database and API checks use temporary SQLite databases. They validate the ORM, migrations, pagination, filtering, and transaction behavior, but do not establish PostgreSQL server connectivity or operational behavior.
+
+Step 8 browser inspection used a local synthetic-only SQLite review fixture to verify sign-in and populated persisted alert rows. The final browser-level WebSocket indicator was not rechecked after the runtime dependency adjustment; authenticated WebSocket behavior is covered by the backend suite. Fixture data is not a production or research result.
+
+Step 9's Compose configuration check validates the service definition only. It is not evidence that Docker images build, PostgreSQL starts, migrations run in a container, or the dashboard can reach those services. The current host's Docker engine access must be resolved before those checks can be reported as passing.
 
 Later steps must record the exact command, result, and relevant blocker here. Keep unit tests separate from infrastructure-dependent checks. Do not report an unrun check as passing.
