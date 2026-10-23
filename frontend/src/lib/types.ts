@@ -122,6 +122,52 @@ export interface AnalyticsTimeline {
   items: AnalyticsBucket[]
 }
 
+export type ModelAvailability = 'not_configured' | 'ready' | 'model_missing' | 'model_invalid' | 'model_incompatible' | 'model_corrupt'
+export type EvaluationStatus = 'not_available' | 'verified' | 'missing' | 'unverified' | 'invalid'
+
+export interface ModelMetadata {
+  model_version: string
+  selected_model: 'logistic_regression' | 'random_forest'
+  feature_schema_version: string
+  feature_count: number
+  classes: string[]
+  created_at_utc: string | null
+  dataset_name: string
+  dataset_rows: number
+  dataset_sha256: string
+  artifact_sha256: string
+}
+
+export interface ClassEvaluation {
+  precision: number
+  recall: number
+  f1: number
+  support: number
+}
+
+export interface EvaluationReport {
+  model_version: string
+  selected_model: 'logistic_regression' | 'random_forest'
+  evaluation_split: string
+  accuracy: number
+  macro_precision: number
+  macro_recall: number
+  macro_f1: number
+  classes: string[]
+  per_class: Record<string, ClassEvaluation>
+  confusion_matrix: number[][]
+  support: Record<string, number>
+}
+
+export interface ModelStatus {
+  status: ModelAvailability
+  configured: boolean
+  message: string
+  model: ModelMetadata | null
+  evaluation_status: EvaluationStatus
+  evaluation: EvaluationReport | null
+}
+
 export interface TokenCursor {
   after_created_at: string
   after_id: string

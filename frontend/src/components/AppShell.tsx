@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, LayoutDashboard, LogOut, RadioTower, Waves } from 'lucide-react'
+import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, Cpu, LayoutDashboard, LogOut, RadioTower, Waves } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -133,7 +133,9 @@ export function AppShell() {
       ? 'Alerts'
       : location.pathname.startsWith('/flows')
         ? 'Flows'
-        : 'Overview'
+          : location.pathname.startsWith('/model')
+            ? 'Model & evaluation'
+            : 'Overview'
 
   return (
     <AlertStreamContext.Provider value={{ status: streamStatus, receivedCount }}>
@@ -151,6 +153,9 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/history" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <CalendarDays size={17} strokeWidth={1.8} /><span>Capture history</span><ArrowRight className="nav-arrow" size={14} />
+            </NavLink>
+            <NavLink to="/model" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <Cpu size={17} strokeWidth={1.8} /><span>Model &amp; evaluation</span><ArrowRight className="nav-arrow" size={14} />
             </NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <Bell size={17} strokeWidth={1.8} /><span>Alerts</span><ArrowRight className="nav-arrow" size={14} />
@@ -185,6 +190,7 @@ export function AppShell() {
           <nav className="mobile-nav" aria-label="Main navigation">
             <NavLink to="/overview" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><LayoutDashboard size={15} />Overview</NavLink>
             <NavLink to="/history" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><CalendarDays size={15} />History</NavLink>
+            <NavLink to="/model" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Cpu size={15} />Model</NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Bell size={16} />Alerts</NavLink>
             <NavLink to="/flows" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Waves size={16} />Flows</NavLink>
           </nav>

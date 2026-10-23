@@ -5,6 +5,7 @@ import { AlertsPage } from './pages/AlertsPage'
 import { CaptureHistoryPage } from './pages/CaptureHistoryPage'
 import { FlowsPage } from './pages/FlowsPage'
 import { LoginPage } from './pages/LoginPage'
+import { ModelPage } from './pages/ModelPage'
 import { OverviewPage } from './pages/OverviewPage'
 
 function ProtectedShell() {
@@ -21,6 +22,7 @@ export function App() {
       <Route path="/" element={<Navigate to="/overview" replace />} />
       <Route path="/overview" element={<OverviewPage />} />
       <Route path="/history" element={<CaptureHistoryPage />} />
+      <Route path="/model" element={<ModelPage />} />
       <Route path="/alerts" element={<AlertsPage />} />
       <Route path="/flows" element={<FlowsPage />} />
     </Route>

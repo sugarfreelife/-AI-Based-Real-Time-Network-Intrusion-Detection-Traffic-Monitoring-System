@@ -182,8 +182,9 @@ def train_and_evaluate(
     joblib.dump(selected_pipeline, artifact)
     metadata["model_artifact_sha256"] = sha256_file(artifact)
     metadata["joblib_version"] = joblib_version
-    metadata_path.write_text(json.dumps(metadata, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     evaluation_path.write_text(json.dumps(evaluation, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    metadata["evaluation_report_sha256"] = sha256_file(evaluation_path)
+    metadata_path.write_text(json.dumps(metadata, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     return {
         "model_version": model_version,
         "selected_model": selected_name,

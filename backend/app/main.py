@@ -18,6 +18,7 @@ from backend.app.api.routes import router
 from backend.app.api.websockets import websocket_router
 from backend.app.config import Settings, settings
 from backend.app.database.session import SessionLocal, get_session
+from backend.app.services.model_status import ModelStatusProvider
 
 logger = logging.getLogger("backend.health")
 
@@ -39,6 +40,7 @@ def create_app(
     app.dependency_overrides[get_session] = request_session
     app.state.session_factory = session_factory
     app.state.auth_config = auth_config
+    app.state.model_status = ModelStatusProvider(auth_config.model_path)
 
     app.add_middleware(
         CORSMiddleware,

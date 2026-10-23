@@ -12,7 +12,7 @@ from scapy.utils import wrpcap
 from ml.data.combine_features import combine_csvs
 from ml.data.exporter import LabelMappingError, export_labeled_features, extract_flows, write_label_template
 from ml.data.loader import DatasetValidationError, load_feature_dataset
-from ml.data.manifest import DatasetManifest, build_manifest, write_manifest
+from ml.data.manifest import DatasetManifest, build_manifest, sha256_file, write_manifest
 from ml.training.split import split_by_capture_group
 from ml.training.train import train_and_evaluate
 from nids_engine.detection import AlertDeduplicator, AlertEngine
@@ -21,6 +21,7 @@ from nids_engine.flows import FlowBuilder
 from nids_engine.inference import InferenceEngine, ModelArtifactStatus, PredictionResult, load_trusted_model
 from nids_engine.monitor import main as monitor_main
 from nids_engine.packet import PacketMetadata
+from backend.app.services.model_status import inspect_configured_model
 
 
 CLASSES = ("BENIGN", "ATTACK_A", "ATTACK_B")
@@ -193,7 +194,14 @@ def test_training_saves_metadata_and_heldout_report(tmp_path) -> None:
     assert set(evaluation["support"]) == set(CLASSES)
     assert result["model_version"] == evaluation["model_version"]
     assert metadata["model_artifact_sha256"]
+    assert metadata["evaluation_report_sha256"] == sha256_file(result["evaluation_path"])
     assert metadata["joblib_version"]
+
+    model_status = inspect_configured_model(str(artifact))
+    assert model_status["status"] == "ready"
+    assert model_status["evaluation_status"] == "verified"
+    assert model_status["model"]["model_version"] == result["model_version"]
+    assert model_status["evaluation"]["evaluation_split"].startswith("held-out capture groups")
 
     model = load_trusted_model(artifact)
     assert model.model_version == result["model_version"]
@@ -201,6 +209,15 @@ def test_training_saves_metadata_and_heldout_report(tmp_path) -> None:
     prediction = InferenceEngine.from_path(artifact).predict(flow)
     assert prediction.status == "scored"
     assert prediction.predicted_label in CLASSES
+
+    Path(result["evaluation_path"]).write_text(
+        Path(result["evaluation_path"]).read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    tampered_status = inspect_configured_model(str(artifact))
+    assert tampered_status["status"] == "ready"
+    assert tampered_status["evaluation_status"] == "invalid"
+    assert tampered_status["evaluation"] is None
 
 
 def _make_flow(*, syn_count: int = 1, start_second: int = 1_700_000_000):

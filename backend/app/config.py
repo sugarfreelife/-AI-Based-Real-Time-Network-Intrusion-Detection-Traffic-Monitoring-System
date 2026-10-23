@@ -16,6 +16,7 @@ class Settings:
     access_token_minutes: int = 15
     refresh_token_days: int = 14
     cors_origins: tuple[str, ...] = ("http://localhost:5173",)
+    model_path: str | None = None
 
     @classmethod
     def from_environment(cls) -> Settings:
@@ -29,6 +30,7 @@ class Settings:
                 for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
                 if origin.strip()
             ),
+            model_path=os.getenv("MODEL_PATH", "").strip() or None,
         )
 
 

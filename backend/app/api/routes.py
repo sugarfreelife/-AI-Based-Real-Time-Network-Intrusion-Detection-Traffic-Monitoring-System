@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, literal, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -19,12 +19,23 @@ from backend.app.schemas import (
     AnalyticsTimelineRead,
     CaptureRunRead,
     FlowRead,
+    ModelStatusRead,
     Page,
 )
 
 router = APIRouter(prefix="/api/v1")
 
 CaptureStatus = Literal["running", "completed", "partial", "failed"]
+
+
+@router.get("/model/status", response_model=ModelStatusRead)
+def get_model_status(
+    request: Request,
+    _user: Annotated[UserDB, Depends(get_current_user)],
+) -> ModelStatusRead:
+    """Return verified metadata for the operator-configured model and report."""
+
+    return ModelStatusRead.model_validate(request.app.state.model_status.get())
 
 
 def _validate_range(since: datetime | None, until: datetime | None) -> None:

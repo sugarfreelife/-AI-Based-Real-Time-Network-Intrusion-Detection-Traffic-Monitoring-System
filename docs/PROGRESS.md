@@ -395,7 +395,7 @@ This deployment check was completed after the ten planned steps. It updates infr
 
 ## Step 16 of 20 — Overview and history dashboard
 
-**Status:** Implemented, verified, and ready for its individual GitHub checkpoint.
+**Status:** Implemented, verified, committed as `b0ff3ac`, and pushed to `origin/main`.
 
 ### Delivered
 
@@ -416,3 +416,30 @@ This deployment check was completed after the ten planned steps. It updates infr
 ### Next task
 
 Step 17 adds truthful model availability and actual evaluation-report views.
+
+## Step 17 of 20 — Model status and evaluation view
+
+**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+
+### Delivered
+
+- Added an authenticated `GET /api/v1/model/status` endpoint and an operator-configured `MODEL_PATH`. The API exposes a small, path-free metadata set only after the existing trusted-model loader verifies the artifact, schema, runtime compatibility, and checksum.
+- Updated training output to record the held-out evaluation report SHA-256 in model metadata. Reports are shown only when their schema, model version, selected estimator, held-out split, and recorded checksum all match.
+- Added explicit not-configured, missing, invalid, incompatible, corrupt, missing-report, unverified-report, and invalid-report states. No report means no metrics are emitted.
+- Mounted the ignored model directory read-only in the API container and added an authenticated, responsive Model & evaluation screen with model metadata, metric summaries, per-class table, and confusion matrix.
+- Kept model libraries optional when the API has no `MODEL_PATH`; no model or research dataset has been added.
+- Documented the API, deployment setting, report integrity boundary, and UI contract.
+
+### Verification
+
+- Backend API and training-artifact tests: PASS, 40 tests across `test_backend.py` and `test_ml_pipeline.py` (23 API tests passed in a separate final run; the earlier combined run covered the prior 39-test set).
+- Frontend suite: PASS, 12 tests across 3 files, including verified-report and no-model dashboard states.
+- `npm run typecheck`: PASS.
+- `npm run build`: PASS. The main JavaScript bundle remains above the bundler's 500 kB warning threshold (698.42 kB before gzip); code splitting is assigned to Step 20.
+- Compose configuration validation and `git diff --check`: PASS.
+- Strict premium UI audit: PASS, no findings.
+- Synthetic model/report material was used only in isolated tests; no synthetic score is presented as project performance.
+
+### Next task
+
+Step 18 adds admin-only user listing and safe activation changes with audit records.

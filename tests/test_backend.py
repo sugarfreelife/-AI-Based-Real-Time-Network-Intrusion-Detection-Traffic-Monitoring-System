@@ -68,7 +68,7 @@ def _observation():
     return flow, prediction, alerts
 
 
-def _authenticated_client(session_factory, role: str = "admin"):
+def _authenticated_client(session_factory, role: str = "admin", auth_config: Settings = TEST_SETTINGS):
     with session_factory() as session:
         user = UserDB(
             username=f"test-{role}",
@@ -77,7 +77,7 @@ def _authenticated_client(session_factory, role: str = "admin"):
         )
         session.add(user)
         session.commit()
-    client = TestClient(create_app(session_factory, TEST_SETTINGS))
+    client = TestClient(create_app(session_factory, auth_config))
     response = client.post("/api/v1/auth/token", json={"username": user.username, "password": TEST_PASSWORD})
     assert response.status_code == 200
     tokens = response.json()
@@ -123,6 +123,11 @@ def test_atomic_observation_is_exposed_by_paginated_filtered_api(session_factory
 
 def test_api_rejects_invalid_pagination_filters_and_time_ranges(session_factory) -> None:
     client, _tokens = _authenticated_client(session_factory)
+    model_status = client.get("/api/v1/model/status")
+    assert model_status.status_code == 200
+    assert model_status.json()["status"] == "not_configured"
+    assert model_status.json()["evaluation_status"] == "not_available"
+    assert TestClient(create_app(session_factory, TEST_SETTINGS)).get("/api/v1/model/status").status_code == 401
     empty_captures = client.get("/api/v1/captures")
     assert empty_captures.status_code == 200
     assert empty_captures.json() == {"items": [], "total": 0, "limit": 50, "offset": 0}
@@ -206,6 +211,22 @@ def test_capture_history_is_authenticated_paginated_and_filterable(session_facto
         "/api/v1/captures", params={"since": "2026-01-02T00:00:00Z", "until": "2026-01-01T00:00:00Z"}
     ).status_code == 422
     assert TestClient(create_app(session_factory, TEST_SETTINGS)).get("/api/v1/captures").status_code == 401
+
+
+def test_configured_missing_model_is_reported_without_metrics(session_factory, tmp_path) -> None:
+    from dataclasses import replace
+
+    client, _tokens = _authenticated_client(
+        session_factory,
+        auth_config=replace(TEST_SETTINGS, model_path=str(tmp_path / "missing-model.joblib")),
+    )
+
+    response = client.get("/api/v1/model/status")
+    assert response.status_code == 200
+    assert response.json()["status"] == "model_missing"
+    assert response.json()["configured"] is True
+    assert response.json()["model"] is None
+    assert response.json()["evaluation"] is None
 
 
 def test_analytics_summary_and_timeline_aggregate_persisted_rows(session_factory) -> None:

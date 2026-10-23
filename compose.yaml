@@ -28,8 +28,11 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
       JWT_ISSUER: ${JWT_ISSUER:-nids-api}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-nids-client}
+      MODEL_PATH: ${MODEL_PATH:-}
       CORS_ORIGINS: http://localhost:${DASHBOARD_PORT:-8080},http://127.0.0.1:${DASHBOARD_PORT:-8080}
       NIDS_LOG_LEVEL: ${NIDS_LOG_LEVEL:-INFO}
+    volumes:
+      - ./ml/models:/models:ro
     command:
       - sh
       - -c

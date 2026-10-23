@@ -3,7 +3,7 @@
 ## Product context
 
 - **Audience:** NIDS administrators, analysts, and viewers.
-- **Primary jobs:** Review persisted activity totals, compare traffic and alert trends, inspect capture history, filter and page through flows and alerts, inspect evidence, acknowledge alerts when permitted, and sign in/out.
+- **Primary jobs:** Review persisted activity totals, compare traffic and alert trends, inspect capture history and model/evaluation evidence, filter and page through flows and alerts, inspect evidence, acknowledge alerts when permitted, and sign in/out.
 - **Target market(s):** Academic technical project; no specific consumer market is inferred.
 - **Active locales:** English interface; browser locale and timezone for date display.
 - **Language/content register:** Concise operational English. Domain terminology follows `docs/API.md`.
@@ -34,6 +34,7 @@
 |---|---|---|---|---|
 | Read-only tables and filters | Shared `DataTable`/`FilterBar` patterns in dashboard | API list endpoints and URL search params | Desktop table / narrow record cards | Component tests and browser review |
 | Overview analytics | `OverviewPage` with `TrafficTimelineChart` | `/analytics/summary` and `/analytics/timeline` | Hourly / daily buckets; UTC API values / browser-local labels | Range round-trip, empty data, responsive chart and accessible value table |
+| Model status and evaluation | `ModelPage` | `/model/status`, configured trusted artifact, matching evaluation report | Explicit unavailable states; verified report only | No-model state, checksum/report mismatch, accessible per-class and confusion tables |
 | Select/Listbox | Native `<select>` | Browser platform, API enum values | Native only | Keyboard review and narrow layout |
 | Date | `datetime-local` inputs converted to ISO with timezone | API `since`/`until` | Native typed date/time | Filter round-trip and validation |
 | Form | Shared login form | `/auth/token` and `UserCreate` constraints | Sign-in | Keyboard, validation and failure recovery |
@@ -76,9 +77,9 @@
 
 ## Navigation and responsive behavior
 
-- **Route titles:** `Overview`, `Capture history`, `Alerts`, `Flows`, and `Sign in · Network observatory`.
+- **Route titles:** `Overview`, `Capture history`, `Model & evaluation`, `Alerts`, `Flows`, and `Sign in · Network observatory`.
 - **Route errors / 403:** Missing session returns to sign-in with a safe same-origin return path. A 403 keeps the page visible and explains that the account cannot perform that action.
-- **Route-state:** Overview, Capture history, Alerts, and Flows are primary navigation links; date ranges, timeline interval, filters, and pagination are query state.
+- **Route-state:** Overview, Capture history, Model & evaluation, Alerts, and Flows are primary navigation links; date ranges, timeline interval, filters, and pagination are query state.
 - **Navigation transformation:** Fixed left rail on wide screens; compact horizontal nav above content on narrow screens.
 - **Responsive tables:** Desktop semantic table; below 760px show equivalent record cards with all fields and actions.
 - **Truncation:** IDs and endpoints may wrap; full exact values are available in detail expansion. Do not rely on hover for access.

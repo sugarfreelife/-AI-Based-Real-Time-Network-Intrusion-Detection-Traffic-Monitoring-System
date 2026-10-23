@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CaptureHistoryPage } from '../pages/CaptureHistoryPage'
+import { ModelPage } from '../pages/ModelPage'
 import { OverviewPage } from '../pages/OverviewPage'
 
 const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }))
@@ -64,6 +65,7 @@ function renderPage(path: string, element: React.ReactNode) {
   return render(<MemoryRouter initialEntries={[path]}><Routes>
     <Route path="/overview" element={<>{element}<LocationProbe /></>} />
     <Route path="/history" element={<>{element}<LocationProbe /></>} />
+    <Route path="/model" element={<>{element}<LocationProbe /></>} />
   </Routes></MemoryRouter>)
 }
 
@@ -152,5 +154,66 @@ describe('overview and capture history dashboard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Analytics unavailable')
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect((await screen.findAllByText('127')).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows only the verified model report and its held-out measurements', async () => {
+    requestMock.mockResolvedValue({
+      status: 'ready',
+      configured: true,
+      message: 'The configured model and its held-out evaluation report passed integrity checks.',
+      evaluation_status: 'verified',
+      model: {
+        model_version: 'nids-fixture-20261023-a1b2c3d4',
+        selected_model: 'random_forest',
+        feature_schema_version: '1.0',
+        feature_count: 32,
+        classes: ['ATTACK_A', 'BENIGN'],
+        created_at_utc: '2026-10-23T00:00:00Z',
+        dataset_name: 'synthetic unit-test fixture',
+        dataset_rows: 90,
+        dataset_sha256: 'a'.repeat(64),
+        artifact_sha256: 'b'.repeat(64),
+      },
+      evaluation: {
+        model_version: 'nids-fixture-20261023-a1b2c3d4',
+        selected_model: 'random_forest',
+        evaluation_split: 'held-out capture groups; not used for model selection',
+        accuracy: 0.722,
+        macro_precision: 0.711,
+        macro_recall: 0.7,
+        macro_f1: 0.705,
+        classes: ['ATTACK_A', 'BENIGN'],
+        per_class: {
+          ATTACK_A: { precision: 0.75, recall: 0.6, f1: 0.667, support: 10 },
+          BENIGN: { precision: 0.672, recall: 0.8, f1: 0.73, support: 10 },
+        },
+        confusion_matrix: [[6, 4], [2, 8]],
+        support: { ATTACK_A: 10, BENIGN: 10 },
+      },
+    })
+    renderPage('/model', <ModelPage />)
+
+    expect(await screen.findByText('Verified artifact')).toBeInTheDocument()
+    expect(screen.getByText('synthetic unit-test fixture')).toBeInTheDocument()
+    expect(screen.getByText('72.2%')).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: /actual classes as rows/i })).toHaveTextContent('ATTACK_A')
+    expect(requestMock).toHaveBeenCalledWith('/api/v1/model/status', expect.any(Object))
+  })
+
+  it('explains the unconfigured model state without displaying metrics', async () => {
+    requestMock.mockResolvedValue({
+      status: 'not_configured',
+      configured: false,
+      message: 'No model is configured. Heuristic detections remain available.',
+      model: null,
+      evaluation_status: 'not_available',
+      evaluation: null,
+    })
+    renderPage('/model', <ModelPage />)
+
+    expect(await screen.findByText('Not configured')).toBeInTheDocument()
+    expect(screen.getByText(/to a trusted project model and restart the API/)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Held-out evaluation metrics' })).not.toBeInTheDocument()
+    expect(screen.getByText(/unavailable until a configured model passes verification/)).toBeInTheDocument()
   })
 })

@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class EndpointRead(BaseModel):
@@ -114,6 +114,70 @@ class AnalyticsTimelineRead(BaseModel):
     until: datetime
     bucket: Literal["hour", "day"]
     items: list[AnalyticsBucketRead]
+
+
+class ClassEvaluationRead(BaseModel):
+    precision: float = Field(ge=0, le=1)
+    recall: float = Field(ge=0, le=1)
+    f1: float = Field(ge=0, le=1)
+    support: int = Field(ge=0)
+
+
+class EvaluationReportRead(BaseModel):
+    model_version: str = Field(min_length=1, max_length=128)
+    selected_model: Literal["logistic_regression", "random_forest"]
+    evaluation_split: str = Field(min_length=1, max_length=256)
+    accuracy: float = Field(ge=0, le=1)
+    macro_precision: float = Field(ge=0, le=1)
+    macro_recall: float = Field(ge=0, le=1)
+    macro_f1: float = Field(ge=0, le=1)
+    classes: list[str] = Field(min_length=1, max_length=256)
+    per_class: dict[str, ClassEvaluationRead]
+    confusion_matrix: list[list[int]]
+    support: dict[str, int]
+
+    @model_validator(mode="after")
+    def validate_matrix_and_classes(self) -> EvaluationReportRead:
+        if len(set(self.classes)) != len(self.classes) or any(not label.strip() for label in self.classes):
+            raise ValueError("evaluation classes must be unique non-empty labels")
+        expected = set(self.classes)
+        if set(self.per_class) != expected or set(self.support) != expected:
+            raise ValueError("evaluation metrics must include every class exactly once")
+        if len(self.confusion_matrix) != len(self.classes) or any(
+            len(row) != len(self.classes) or any(value < 0 for value in row)
+            for row in self.confusion_matrix
+        ):
+            raise ValueError("confusion matrix dimensions must match the class list")
+        for index, label in enumerate(self.classes):
+            if self.support[label] < 0 or sum(self.confusion_matrix[index]) != self.support[label]:
+                raise ValueError("confusion matrix rows must agree with class support")
+            if self.per_class[label].support != self.support[label]:
+                raise ValueError("per-class support must agree with report support")
+        return self
+
+
+class ModelMetadataRead(BaseModel):
+    model_version: str = Field(min_length=1, max_length=128)
+    selected_model: Literal["logistic_regression", "random_forest"]
+    feature_schema_version: str = Field(min_length=1, max_length=32)
+    feature_count: int = Field(ge=1)
+    classes: list[str] = Field(min_length=1, max_length=256)
+    created_at_utc: datetime | None = None
+    dataset_name: str = Field(min_length=1, max_length=256)
+    dataset_rows: int = Field(ge=0)
+    dataset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ModelStatusRead(BaseModel):
+    status: Literal[
+        "not_configured", "ready", "model_missing", "model_invalid", "model_incompatible", "model_corrupt"
+    ]
+    configured: bool
+    message: str = Field(min_length=1, max_length=256)
+    model: ModelMetadataRead | None
+    evaluation_status: Literal["not_available", "verified", "missing", "unverified", "invalid"]
+    evaluation: EvaluationReportRead | None
 
 
 class LoginRequest(BaseModel):

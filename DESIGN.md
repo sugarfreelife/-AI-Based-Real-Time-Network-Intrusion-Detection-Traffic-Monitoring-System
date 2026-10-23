@@ -138,7 +138,7 @@ Primary forest solid buttons are reserved for login, filter application, and ack
 
 ### Navigation and data display
 
-The side rail identifies the active Overview, Capture history, Alerts, or Flows route with a forest-tinted panel and packet-trace marker. Severity badges include a text label. Read-only tables have explicit headers and stable sorting order from the API. Recharts overview timelines use persisted API counts within the selected range and label UTC intervals in the viewer's local timezone. The Alerts page chart displays only severity counts from the currently loaded page and names that scope directly.
+The side rail identifies the active Overview, Capture history, Model & evaluation, Alerts, or Flows route with a forest-tinted panel and packet-trace marker. Severity badges include a text label. Read-only tables have explicit headers and stable sorting order from the API. Recharts overview timelines use persisted API counts within the selected range and label UTC intervals in the viewer's local timezone. Model evaluation tables show only reports that pass the configured artifact and report checks; unavailable model state remains explicit. The Alerts page chart displays only severity counts from the currently loaded page and names that scope directly.
 
 ### Forms and overlays
 
