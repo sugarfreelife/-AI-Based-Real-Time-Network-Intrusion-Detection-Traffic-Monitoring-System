@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-The 10-step implementation plan is complete. The project parses PCAP/PCAPNG metadata, builds bidirectional flows, extracts versioned features, prepares labeled data, trains compatible models, replays through optional inference, emits explainable alerts, persists observations, serves authenticated REST reads, acknowledges alerts by role, streams persisted alerts over authenticated WebSockets, and presents persisted records in an authenticated dashboard. The Docker Compose images have been built and the PostgreSQL, API, and dashboard services were verified locally; the dashboard is available at <http://127.0.0.1:8080>. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. See [docs/HANDOFF.md](docs/HANDOFF.md) for the evidence, setup steps, and remaining limits.
+Steps 1–13 are complete; Steps 14–20 of the requested extension are in progress. The project parses PCAP/PCAPNG metadata, builds bidirectional flows, extracts versioned features, prepares labeled data, trains compatible models, replays through optional inference, emits explainable alerts, persists observations, serves authenticated REST reads, acknowledges alerts by role, streams persisted alerts over authenticated WebSockets, and presents persisted records in an authenticated dashboard. Database-backed replay now supports stable UUIDs for safe retries. The Docker Compose images have been built and the PostgreSQL, API, and dashboard services were verified locally; the dashboard is available at <http://127.0.0.1:8080>. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. See [docs/HANDOFF.md](docs/HANDOFF.md) for the evidence, setup steps, and remaining limits.
 
 ## Planned technology
 
@@ -16,7 +16,7 @@ The 10-step implementation plan is complete. The project parses PCAP/PCAPNG meta
 
 ## Development plan
 
-The work is split into at most 10 reviewable steps. Each completed step is intended to be committed and pushed before the next step begins. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/PROGRESS.md](docs/PROGRESS.md).
+The work is split into 20 reviewable steps. Each completed step is committed and pushed before the next step begins. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) and [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Safety and data handling
 

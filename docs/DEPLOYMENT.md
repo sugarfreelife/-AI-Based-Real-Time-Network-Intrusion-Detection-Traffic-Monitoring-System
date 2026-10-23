@@ -55,7 +55,7 @@ Run the one-shot monitor service:
 docker compose --profile demo run --rm monitor
 ```
 
-The service mounts captures read-only, replays packet metadata through flow construction and the configured rules, and stores completed flow/prediction/alert records in PostgreSQL. Packet payloads are not emitted. Refresh the dashboard to review persisted records. If `ml/models/` contains a trusted project model and its matching metadata sidecar, set `MODEL_PATH=/models/<model-file>.joblib` in `.env` before running the monitor. No model is included by default.
+The service mounts captures read-only, replays packet metadata through flow construction and the configured rules, and stores completed flow/prediction/alert records in PostgreSQL. Packet payloads are not emitted. Refresh the dashboard to review persisted records. If `ml/models/` contains a trusted project model and its matching metadata sidecar, set `MODEL_PATH=/models/<model-file>.joblib` in `.env` before running the monitor. No model is included by default. For a safe retry after an interrupted replay, set `CAPTURE_ID` to the same UUID used on the first attempt. Leave it empty for a new capture run. Reuse the ID only for the same capture and model configuration; conflicting flow data is reported as an error.
 
 ## Service and data behavior
 

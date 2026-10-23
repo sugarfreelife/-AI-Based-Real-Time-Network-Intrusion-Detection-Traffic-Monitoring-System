@@ -18,7 +18,9 @@ erDiagram
         integer packets_processed
         integer parsing_failures
         integer read_failures
+        integer attempt_count
         integer flow_count
+        integer duplicate_flows
         integer alert_count
         string model_status
         string failure_reason
@@ -104,12 +106,14 @@ python -m alembic upgrade head
 
 The migrations create `flows`, `predictions`, `alerts`, `capture_runs`, `users`, `refresh_sessions`, `audit_events`, and Alembic's version table. Runtime code never calls `create_all`; schema changes belong in numbered Alembic revisions. After migration, provision the first administrator with `python -m backend.app.auth_admin --username admin`; password input is hidden. Later accounts are created by an authenticated administrator through the API.
 
-PostgreSQL DDL was rendered successfully in offline migration mode. On 2026-10-23, a disposable PostgreSQL Compose project also applied migrations through `0003_capture_runs`; the PostgreSQL integration suite passed, and the isolated test volume was removed afterward.
+PostgreSQL DDL was rendered successfully in offline migration mode. Disposable PostgreSQL Compose projects applied migrations through `0004_retry_safe_replay`; the integration suite passed, and each isolated test volume was removed afterward.
 
 ## Persistence behavior
 
 `nids_engine.monitor --database-url <URL>` stores each finalized flow, its prediction status, and its alerts in one transaction. The monitor writes no flow JSON to standard output until that transaction succeeds. A failed database write stops replay and reports the number of previously completed flows; it does not claim the failed observation was saved.
 
-When a database URL is configured, the monitor writes a `capture_runs` row before reading the PCAP and updates it on completion, partial reads, or handled failure. It stores the source filename rather than the full local path, packet/flow/prediction/alert counts, model status/version, elapsed time, and a bounded failure code. A hard process termination can leave a run marked `running` with no completion time; later history views can show that state without inferring success.
+When a database URL is configured, the monitor writes a `capture_runs` row before reading the PCAP and updates it on completion, partial reads, or handled failure. It stores the source filename rather than the full local path, packet/flow/prediction/alert counts, retry attempt and duplicate-flow counts, model status/version, elapsed time, and a bounded failure code. A hard process termination can leave a run marked `running` with no completion time; later history views can show that state without inferring success.
+
+Each replay generates a new UUID unless `--capture-id <uuid>` is supplied. Reuse the same ID to safely retry a partially completed replay. Flow, prediction, and alert rows for an already stored `(capture_id, flow_id)` are compared and kept unchanged; acknowledged alerts remain acknowledged. A matching retry is counted as a duplicate. Different flow data, prediction results, alerts, source filename, or model identity for an existing capture ID fail with `capture_identity_conflict`. Reusing one ID for different captures is an operator error and should be avoided.
 
 The API reads the same persisted records. Login, refresh rotation, and logout use database-backed sessions; only a SHA-256 digest of each refresh-token `jti` is stored. Audit events contain event and target metadata, not credentials or tokens. Alert acknowledgement updates the alert and records its actor in one transaction. PostgreSQL connectivity, migration startup, and API readiness were verified in Compose; the more detailed API/authentication behavior remains covered by SQLite integration tests.

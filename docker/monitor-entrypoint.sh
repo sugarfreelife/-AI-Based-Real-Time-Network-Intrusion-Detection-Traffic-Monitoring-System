@@ -2,6 +2,9 @@
 set -eu
 
 set -- --pcap "${PCAP_PATH:-/captures/demo.pcap}" --database-url "$DATABASE_URL"
+if [ -n "${CAPTURE_ID:-}" ]; then
+    set -- "$@" --capture-id "$CAPTURE_ID"
+fi
 if [ -n "${MODEL_PATH:-}" ]; then
     set -- "$@" --model "$MODEL_PATH"
 fi

@@ -119,7 +119,18 @@ def test_postgres_auth_persistence_acknowledgement_and_websocket() -> None:
                     prediction=prediction,
                     alerts=alerts,
                 )
-                flow_record_id = stored.id
+                flow_record_id = stored.record.id
+            assert stored.created is True
+            with factory() as session, session.begin():
+                retried = persist_observation(
+                    session,
+                    capture_id=capture_id,
+                    flow=flow,
+                    prediction=prediction,
+                    alerts=alerts,
+                )
+            assert retried.created is False
+            assert retried.record.id == flow_record_id
             assert client.get("/api/v1/flows").json()["items"][0]["id"] == flow_record_id
 
             alert_id = alerts[0].alert_id

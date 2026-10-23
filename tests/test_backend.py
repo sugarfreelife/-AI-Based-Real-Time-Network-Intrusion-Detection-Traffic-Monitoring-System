@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from scapy.layers.inet import IP, TCP
 from scapy.utils import wrpcap
 from sqlalchemy import create_engine, select
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -95,7 +95,7 @@ def test_atomic_observation_is_exposed_by_paginated_filtered_api(session_factory
             prediction=prediction,
             alerts=alerts,
         )
-        flow_record_id = stored.id
+        flow_record_id = stored.record.id
 
     client, _tokens = _authenticated_client(session_factory)
     assert client.get("/health/live").json() == {"status": "alive"}
@@ -150,10 +150,10 @@ def test_database_readiness_reports_degraded_state() -> None:
     assert response.json() == {"status": "degraded", "database": "unavailable"}
 
 
-def test_duplicate_capture_flow_rolls_back_the_entire_observation(session_factory) -> None:
+def test_duplicate_capture_flow_is_idempotent(session_factory) -> None:
     flow, prediction, alerts = _observation()
     with session_factory() as session, session.begin():
-        persist_observation(
+        first = persist_observation(
             session,
             capture_id="same-capture",
             flow=flow,
@@ -161,12 +161,47 @@ def test_duplicate_capture_flow_rolls_back_the_entire_observation(session_factor
             alerts=alerts,
         )
 
-    with pytest.raises(IntegrityError):
+    with session_factory() as session, session.begin():
+        retry = persist_observation(
+            session,
+            capture_id="same-capture",
+            flow=flow,
+            prediction=prediction,
+            alerts=alerts,
+        )
+
+    assert first.created is True
+    assert retry.created is False
+    assert retry.record.id == first.record.id
+
+    with session_factory() as session:
+        assert session.query(FlowRecordDB).count() == 1
+        assert session.query(PredictionDB).count() == 1
+        assert session.query(AlertDB).count() == len(alerts)
+
+
+def test_capture_flow_identity_rejects_conflicting_data_atomically(session_factory) -> None:
+    from dataclasses import replace
+
+    from backend.app.services.ingestion import IngestionConflict
+
+    flow, prediction, alerts = _observation()
+    with session_factory() as session, session.begin():
+        persist_observation(
+            session,
+            capture_id="conflicting-capture",
+            flow=flow,
+            prediction=prediction,
+            alerts=alerts,
+        )
+
+    conflicting_flow = replace(flow, forward=replace(flow.forward, byte_count=flow.forward.byte_count + 1))
+    with pytest.raises(IngestionConflict, match="different flow data"):
         with session_factory() as session, session.begin():
             persist_observation(
                 session,
-                capture_id="same-capture",
-                flow=flow,
+                capture_id="conflicting-capture",
+                flow=conflicting_flow,
                 prediction=prediction,
                 alerts=alerts,
             )
@@ -205,6 +240,7 @@ def test_monitor_persists_flow_prediction_and_alert_then_api_reads_it(tmp_path, 
     assert summary["persisted"] is True
     assert summary["flows"] == 1
     assert flow_output["prediction"]["status"] == "model_missing"
+    capture_id = summary["capture_id"]
 
     persisted_engine = create_engine(f"sqlite+pysqlite:///{database_path}")
     persisted_factory = sessionmaker(bind=persisted_engine, expire_on_commit=False)
@@ -224,6 +260,26 @@ def test_monitor_persists_flow_prediction_and_alert_then_api_reads_it(tmp_path, 
     response = client.get("/api/v1/alerts")
     assert response.status_code == 200
     assert response.json()["items"][0]["detection_code"] == "tcp_syn_burst"
+
+    retry_result = monitor_main([
+        "--pcap", str(pcap_path),
+        "--database-url", f"sqlite+pysqlite:///{database_path}",
+        "--capture-id", capture_id,
+        "--syn-burst-threshold", "2",
+        "--high-packets-per-second", "1000000",
+    ])
+    retry_output = capsys.readouterr()
+    retry_summary = json.loads(retry_output.err.strip())["monitor_summary"]
+    assert retry_result == 0
+    assert retry_summary["flows"] == 1
+    assert retry_summary["duplicate_flows"] == 1
+    with persisted_factory() as session:
+        [capture_run] = session.query(CaptureRunDB).all()
+        assert capture_run.attempt_count == 2
+        assert capture_run.duplicate_flows == 1
+        assert session.query(FlowRecordDB).count() == 1
+        assert session.query(PredictionDB).count() == 1
+        assert session.query(AlertDB).count() == 1
     persisted_engine.dispose()
 
 
@@ -349,7 +405,7 @@ def test_admin_user_creation_and_role_protected_alert_acknowledgement(session_fa
     flow, prediction, alerts = _observation()
     with session_factory() as session, session.begin():
         saved_flow = persist_observation(session, capture_id="ack-capture", flow=flow, prediction=prediction, alerts=alerts)
-        flow_record_id = saved_flow.id
+        flow_record_id = saved_flow.record.id
         alert_id = alerts[0].alert_id
     viewer_client, _ = _authenticated_client(session_factory, role="viewer")
     assert viewer_client.get("/api/v1/flows").status_code == 200
@@ -363,6 +419,12 @@ def test_admin_user_creation_and_role_protected_alert_acknowledgement(session_fa
     assert ack.status_code == 200
     assert ack.json()["status"] == "acknowledged"
     assert ack.json()["acknowledged_by_user_id"] is not None
+    with session_factory() as session, session.begin():
+        retry = persist_observation(
+            session, capture_id="ack-capture", flow=flow, prediction=prediction, alerts=alerts
+        )
+        assert retry.created is False
+        assert retry.record.alerts[0].status == "acknowledged"
     with session_factory() as session:
         event = session.scalar(select(AuditEventDB).where(AuditEventDB.event_type == "alert.acknowledged"))
         assert event is not None and event.target_id == alert_id
@@ -394,7 +456,7 @@ def test_authenticated_websocket_delivers_new_persisted_alert(session_factory) -
     flow, prediction, alerts = _observation()
     with session_factory() as session, session.begin():
         saved_flow = persist_observation(session, capture_id="ws-capture", flow=flow, prediction=prediction, alerts=alerts)
-        flow_record_id = saved_flow.id
+        flow_record_id = saved_flow.record.id
         original_alert_id = alerts[0].alert_id
     with session_factory() as session:
         original_alert = session.get(AlertDB, original_alert_id)

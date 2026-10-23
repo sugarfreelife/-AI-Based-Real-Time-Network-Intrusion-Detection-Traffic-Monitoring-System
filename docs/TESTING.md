@@ -2,7 +2,7 @@
 
 ## Current result
 
-Step 1 began with no application code or test suite. The 10-step plan is now complete; the final local Python suite has 60 passing tests, and the dashboard has five passing frontend tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
+Step 1 began with no application code or test suite. The original 10-step plan is complete; Steps 11–13 extend the project. The Step 10 baseline had 60 passing Python tests and five frontend tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
 
 The initial Step 10 audit could not access Docker due to named-pipe permissions. On 2026-10-22, elevated local execution succeeded: Compose images built, PostgreSQL/API became healthy, migrations ran through `0002_authentication`, and the dashboard and database readiness endpoint returned HTTP 200. The exact runtime follow-up is recorded below. No authorized PCAP or labeled research dataset was supplied.
 
@@ -73,6 +73,11 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | Step 12 monitor/capture-run regression checks | PASS, 20 tests | SQLite success/failure/partial-run lifecycle and existing backend persistence coverage. |
 | Step 12 fresh SQLite migration and schema drift | PASS | Reached `0003_capture_runs (head)`; `alembic check` reported no new upgrade operations. |
 | Step 12 PostgreSQL migration and integration | PASS, 3 tests | Disposable PostgreSQL applied `0003_capture_runs`; PostgreSQL end-to-end and capture-run lifecycle tests passed, then the test volume was removed. |
+| Step 13 retry-safe persistence and monitor replay | PASS, 22 focused tests | Same-ID replay creates no duplicate flow/prediction/alert rows, increments retry counters, retains acknowledgement state, and rejects conflicting flow data. |
+| Step 13 full Python suite | PASS, 64 passed, 1 opt-in PostgreSQL test skipped | The PostgreSQL test was run separately against a disposable database and passed. |
+| Step 13 bytecode compilation | PASS | Compiled backend, migration, ML, packet engine, and test modules; cache files were directed to temporary storage. |
+| Step 13 fresh SQLite migration and schema drift | PASS | Reached `0004_retry_safe_replay (head)`; Alembic detected no new operations. |
+| Step 13 PostgreSQL idempotency integration | PASS, 1 test | Disposable PostgreSQL applied `0004_retry_safe_replay`; duplicate persistence returned the original record, then the `nids-step13` project and volume were removed. |
 
 The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
 

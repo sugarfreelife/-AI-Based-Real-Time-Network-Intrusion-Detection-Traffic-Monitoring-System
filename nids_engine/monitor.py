@@ -10,7 +10,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from nids_engine.capture import CaptureError, replay_pcap
 from nids_engine.detection import AlertEngine
@@ -47,6 +47,16 @@ def _positive_finite(value: str) -> float:
     return parsed
 
 
+def _capture_id(value: str) -> str:
+    try:
+        parsed = UUID(value)
+    except (ValueError, AttributeError) as exc:
+        raise argparse.ArgumentTypeError("capture ID must be a UUID") from exc
+    if str(parsed) != value.lower():
+        raise argparse.ArgumentTypeError("capture ID must be a canonical UUID")
+    return str(parsed)
+
+
 def _flow_dict(flow: FlowRecord) -> dict[str, Any]:
     return {
         "flow_id": flow.flow_id,
@@ -62,6 +72,8 @@ def _flow_dict(flow: FlowRecord) -> dict[str, Any]:
 
 
 def _failure_code(error: Exception) -> str:
+    if getattr(error, "failure_code", None):
+        return str(error.failure_code)
     if isinstance(error, PersistenceError):
         return "persistence_error"
     if isinstance(error, CaptureError):
@@ -76,6 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="Replay an authorized PCAP through flow aggregation, optional ML inference, and explainable alerts."
     )
     parser.add_argument("--pcap", required=True, help="authorized offline PCAP/PCAPNG input")
+    parser.add_argument(
+        "--capture-id", type=_capture_id,
+        help="stable UUID for retrying this capture; a new UUID is generated when omitted",
+    )
     parser.add_argument("--model", help="trusted project .joblib model; omit for rule-only mode")
     parser.add_argument("--database-url", help="persist each completed flow/prediction/alert transaction to this database")
     parser.add_argument(
@@ -90,7 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     inference = InferenceEngine.from_path(args.model)
-    capture_id = str(uuid4())
+    capture_id = args.capture_id or str(uuid4())
     capture_started_at = datetime.now(UTC)
     source_name = Path(args.pcap).name[:255] or "capture"
     session_factory = None
@@ -102,24 +118,52 @@ def main(argv: list[str] | None = None) -> int:
 
             from backend.app.database.session import make_engine
             from backend.app.database.models import CaptureRunDB
-            from backend.app.services.ingestion import persist_observation
+            from backend.app.services.ingestion import IngestionConflict, persist_observation
 
             database_engine = make_engine(args.database_url)
             session_factory = sessionmaker(bind=database_engine, autoflush=False, expire_on_commit=False)
             with session_factory.begin() as session:
-                session.add(CaptureRunDB(
-                    capture_id=capture_id,
-                    source_name=source_name,
-                    status="running",
-                    started_at=capture_started_at,
-                    model_status=str(inference.status),
-                    model_version=inference.model_version,
-                ))
+                run = session.get(CaptureRunDB, capture_id)
+                if run is None:
+                    session.add(CaptureRunDB(
+                        capture_id=capture_id,
+                        source_name=source_name,
+                        status="running",
+                        started_at=capture_started_at,
+                        model_status=str(inference.status),
+                        model_version=inference.model_version,
+                    ))
+                else:
+                    if (
+                        run.source_name != source_name
+                        or run.model_status != str(inference.status)
+                        or run.model_version != inference.model_version
+                    ):
+                        raise IngestionConflict(
+                            f"capture ID {capture_id!r} is already assigned to a different source or model"
+                        )
+                    run.status = "running"
+                    run.started_at = capture_started_at
+                    run.completed_at = None
+                    run.attempt_count += 1
+                    run.packets_seen = 0
+                    run.packets_processed = 0
+                    run.packets_filtered = 0
+                    run.parsing_failures = 0
+                    run.read_failures = 0
+                    run.flow_count = 0
+                    run.duplicate_flows = 0
+                    run.scored_count = 0
+                    run.unscored_count = 0
+                    run.alert_count = 0
+                    run.suppressed_duplicate_alerts = 0
+                    run.elapsed_seconds = None
+                    run.failure_reason = None
         except Exception as exc:
             if database_engine is not None:
                 database_engine.dispose()
             print(json.dumps({
-                "monitor_error": "database write failed; capture run could not be recorded",
+                "monitor_error": str(exc) if getattr(exc, "failure_code", None) else "database write failed; capture run could not be recorded",
                 "capture_id": capture_id,
                 "completed_flows": 0,
                 "failure_reason": _failure_code(exc),
@@ -134,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         high_packet_rate_threshold=args.high_packets_per_second,
     )
     builder = FlowBuilder()
-    counts = {"flows": 0, "scored": 0, "unscored": 0, "alerts": 0}
+    counts = {"flows": 0, "duplicate_flows": 0, "scored": 0, "unscored": 0, "alerts": 0}
     prediction_status_counts: dict[str, int] = {}
     processed_packets = 0
 
@@ -161,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
                 run.parsing_failures = int(stats.parsing_failures) if stats is not None else 0
                 run.read_failures = int(stats.read_failures) if stats is not None else 0
                 run.flow_count = int(counts["flows"])
+                run.duplicate_flows = int(counts["duplicate_flows"])
                 run.scored_count = int(counts["scored"])
                 run.unscored_count = int(counts["unscored"])
                 run.alert_count = int(counts["alerts"])
@@ -173,17 +218,20 @@ def main(argv: list[str] | None = None) -> int:
     def emit_flow(flow: FlowRecord) -> None:
         prediction = inference.predict(flow)
         flow_alerts = alerts.evaluate(flow, prediction)
+        is_duplicate = False
         if session_factory is not None and persist_observation is not None:
             try:
                 with session_factory() as session:
                     with session.begin():
-                        persist_observation(
+                        persisted = persist_observation(
                             session,
                             capture_id=capture_id,
                             flow=flow,
                             prediction=prediction,
                             alerts=flow_alerts,
                         )
+                        is_duplicate = not persisted.created
+                        counts["duplicate_flows"] += int(is_duplicate)
             except SQLAlchemyError as exc:
                 raise PersistenceError("database write failed; replay stopped before this flow was reported") from exc
         counts["flows"] += 1
@@ -196,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
             "flow": _flow_dict(flow),
             "prediction": prediction.as_dict(),
             "alerts": [alert.as_dict() for alert in flow_alerts],
+            "duplicate": is_duplicate,
         }, separators=(",", ":")))
 
     def on_packet(metadata: PacketMetadata) -> None:

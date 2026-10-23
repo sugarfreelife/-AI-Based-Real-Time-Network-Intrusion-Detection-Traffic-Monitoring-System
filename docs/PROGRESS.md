@@ -342,3 +342,21 @@ This deployment check was completed after the ten planned steps. It updates infr
 - Fresh SQLite Alembic upgrade and drift check: PASS, `0003_capture_runs (head)`, no new upgrade operations detected.
 - Disposable PostgreSQL migration and integration check: PASS, 3 tests; temporary project and volume removed.
 - On a forced process termination, a run can remain `running`; this is surfaced as an incomplete state rather than changed to success.
+
+## Step 13 of 20 — Retry-safe replay identity
+
+**Status:** Implemented and verified; ready for its GitHub checkpoint.
+
+### Delivered
+
+- Added `--capture-id` for stable UUIDs, with generated UUIDs remaining the default. The Docker demo accepts the same value through `CAPTURE_ID`.
+- Made persistence idempotent for each `(capture_id, flow_id)`. Identical flow and prediction data are skipped, alert IDs may differ across attempts, and acknowledgement state is retained.
+- Rejects flow, prediction, alert, source-name, or model-identity conflicts for an existing capture ID without replacing saved observations.
+- Added migration `0004_retry_safe_replay` to count attempts and duplicate flows in each capture-run record.
+
+### Verification
+
+- Focused monitor/backend suite: PASS, 22 tests. Includes same-ID PCAP replay, duplicate counters, alert acknowledgement preservation, conflicting flow data rejection, and invalid UUID handling.
+- Full Python suite: PASS, 64 tests; the opt-in PostgreSQL integration is run separately below. Bytecode compilation: PASS.
+- Fresh SQLite migration and schema check: PASS, `0004_retry_safe_replay (head)`, no new upgrade operations detected.
+- Disposable PostgreSQL migration and integration: PASS, 1 test. The migration was applied, retry persistence was exercised, and the isolated project and volume were removed.

@@ -56,6 +56,8 @@ Bound queues and flow state; make replay deterministic; report parser failures; 
 
 Step 12 adds the `capture_runs` table and records each database-backed offline replay's lifecycle, packet/flow/alert counters, model state, elapsed time, and bounded failure reason. Only the PCAP filename is retained; a forced process termination can leave a run marked `running`.
 
+Step 13 allows an operator-supplied capture UUID. Replays with the same capture and flow IDs compare saved flow, prediction, and alert content and skip identical rows. Conflicts fail without replacing saved data, and retries preserve alert acknowledgement state. Capture runs record attempt and duplicate-flow counts.
+
 ## Implemented in Step 7
 
 `backend.app.security` uses Argon2id password hashes and HS256 JWTs with explicit issuer, audience, token type, expiry, and required claims. Access tokens expire after 15 minutes; refresh tokens are rotated, and the database stores only a one-way digest of each refresh `jti`. Refresh-token reuse revokes all active refresh sessions for that account. No public registration route exists; the first admin is created by `python -m backend.app.auth_admin` after migrations. REST data routes and the WebSocket require an active database user. Admins create users, analysts and admins acknowledge alerts, and all roles can read/stream. Audit records capture login, refresh, logout, account creation, and acknowledgement events without credentials. The WebSocket authenticates its first frame and polls persisted alerts so a separate monitor process can publish data without an in-process broker. SQLite test coverage passes; PostgreSQL migrations and service readiness were also verified in the local Compose deployment on 2026-10-22.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pytest
 
 from scapy.layers.inet import IP, TCP
 from scapy.utils import wrpcap
@@ -9,7 +10,13 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.app.database.base import Base
 from backend.app.database.models import CaptureRunDB, FlowRecordDB
-from nids_engine.monitor import main as monitor_main
+from nids_engine.monitor import build_parser, main as monitor_main
+
+
+def test_capture_id_option_requires_a_uuid() -> None:
+    with pytest.raises(SystemExit) as raised:
+        build_parser().parse_args(["--pcap", "input.pcap", "--capture-id", "not-a-uuid"])
+    assert raised.value.code == 2
 
 
 def test_failed_replay_is_recorded_without_storing_the_full_source_path(tmp_path, capsys) -> None:

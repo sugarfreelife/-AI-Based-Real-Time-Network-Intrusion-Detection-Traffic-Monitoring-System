@@ -65,6 +65,7 @@ services:
     environment:
       DATABASE_URL: *database-url
       PCAP_PATH: ${PCAP_PATH:-/captures/demo.pcap}
+      CAPTURE_ID: ${CAPTURE_ID:-}
       MODEL_PATH: ${MODEL_PATH:-}
     volumes:
       - ./pcaps:/captures:ro
