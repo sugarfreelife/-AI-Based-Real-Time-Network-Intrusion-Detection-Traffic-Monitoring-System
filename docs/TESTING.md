@@ -78,6 +78,8 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | Step 13 bytecode compilation | PASS | Compiled backend, migration, ML, packet engine, and test modules; cache files were directed to temporary storage. |
 | Step 13 fresh SQLite migration and schema drift | PASS | Reached `0004_retry_safe_replay (head)`; Alembic detected no new operations. |
 | Step 13 PostgreSQL idempotency integration | PASS, 1 test | Disposable PostgreSQL applied `0004_retry_safe_replay`; duplicate persistence returned the original record, then the `nids-step13` project and volume were removed. |
+| Step 14 capture history API | PASS, 20 backend tests | Authenticated list/detail, pagination, status/time filters, empty results, validation, 404, and role-based read access passed with SQLite. |
+| Step 14 PostgreSQL capture history | PASS, 1 integration test | Authenticated capture list/detail ran against disposable PostgreSQL; the `nids-step14` project and volume were removed. |
 
 The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
 

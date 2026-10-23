@@ -123,6 +123,9 @@ def test_atomic_observation_is_exposed_by_paginated_filtered_api(session_factory
 
 def test_api_rejects_invalid_pagination_filters_and_time_ranges(session_factory) -> None:
     client, _tokens = _authenticated_client(session_factory)
+    empty_captures = client.get("/api/v1/captures")
+    assert empty_captures.status_code == 200
+    assert empty_captures.json() == {"items": [], "total": 0, "limit": 50, "offset": 0}
     assert client.get("/api/v1/flows", params={"limit": 101}).status_code == 422
     assert client.get("/api/v1/flows", params={"offset": -1}).status_code == 422
     assert client.get("/api/v1/flows", params={"protocol": "BOGUS"}).status_code == 422
@@ -131,6 +134,78 @@ def test_api_rejects_invalid_pagination_filters_and_time_ranges(session_factory)
         params={"since": "2025-01-02T00:00:00Z", "until": "2025-01-01T00:00:00Z"},
     ).status_code == 422
     assert client.get("/api/v1/alerts", params={"since": "2025-01-01T00:00:00"}).status_code == 422
+
+
+def test_capture_history_is_authenticated_paginated_and_filterable(session_factory) -> None:
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    capture_runs = [
+        CaptureRunDB(
+            capture_id="capture-complete",
+            source_name="capture-a.pcap",
+            status="completed",
+            started_at=base,
+            completed_at=base,
+            attempt_count=2,
+            packets_seen=5,
+            packets_processed=5,
+            flow_count=2,
+            duplicate_flows=1,
+            scored_count=1,
+            unscored_count=1,
+            alert_count=1,
+            model_status="missing",
+            model_version=None,
+            elapsed_seconds=1.25,
+        ),
+        CaptureRunDB(
+            capture_id="capture-failed",
+            source_name="capture-b.pcap",
+            status="failed",
+            started_at=base.replace(day=2),
+            completed_at=base.replace(day=2),
+            model_status="missing",
+            failure_reason="capture_error",
+        ),
+        CaptureRunDB(
+            capture_id="capture-running",
+            source_name="capture-c.pcap",
+            status="running",
+            started_at=base.replace(day=3),
+            model_status="available",
+            model_version="model-1",
+        ),
+    ]
+    with session_factory() as session, session.begin():
+        session.add_all(capture_runs)
+
+    client, _tokens = _authenticated_client(session_factory, role="viewer")
+    page = client.get("/api/v1/captures", params={"limit": 2, "offset": 0})
+    assert page.status_code == 200
+    payload = page.json()
+    assert payload["total"] == 3
+    assert [item["capture_id"] for item in payload["items"]] == ["capture-running", "capture-failed"]
+    assert payload["items"][1]["failure_reason"] == "capture_error"
+
+    filtered = client.get(
+        "/api/v1/captures",
+        params={"status": "completed", "since": "2026-01-01T00:00:00Z", "until": "2026-01-01T23:59:59Z"},
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    complete = filtered.json()["items"][0]
+    assert complete["attempt_count"] == 2
+    assert complete["duplicate_flows"] == 1
+    assert complete["flow_count"] == 2
+    assert client.get("/api/v1/captures/capture-complete").json()["model_status"] == "missing"
+    assert client.get("/api/v1/captures/not-found").status_code == 404
+
+    assert client.get("/api/v1/captures", params={"status": "unknown"}).status_code == 422
+    assert client.get("/api/v1/captures", params={"limit": 101}).status_code == 422
+    assert client.get("/api/v1/captures", params={"since": "2026-01-01T00:00:00"}).status_code == 422
+    assert client.get(
+        "/api/v1/captures", params={"since": "2026-01-02T00:00:00Z", "until": "2026-01-01T00:00:00Z"}
+    ).status_code == 422
+    assert TestClient(create_app(session_factory, TEST_SETTINGS)).get("/api/v1/captures").status_code == 401
 
 
 def test_database_readiness_reports_degraded_state() -> None:

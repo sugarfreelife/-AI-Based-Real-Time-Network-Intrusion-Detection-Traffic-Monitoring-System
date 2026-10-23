@@ -66,6 +66,32 @@ class AlertRead(BaseModel):
     created_at: datetime
 
 
+class CaptureRunRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    capture_id: str
+    source_name: str
+    status: Literal["running", "completed", "partial", "failed"]
+    started_at: datetime
+    completed_at: datetime | None
+    attempt_count: int = Field(ge=1)
+    packets_seen: int = Field(ge=0)
+    packets_processed: int = Field(ge=0)
+    packets_filtered: int = Field(ge=0)
+    parsing_failures: int = Field(ge=0)
+    read_failures: int = Field(ge=0)
+    flow_count: int = Field(ge=0)
+    duplicate_flows: int = Field(ge=0)
+    scored_count: int = Field(ge=0)
+    unscored_count: int = Field(ge=0)
+    alert_count: int = Field(ge=0)
+    suppressed_duplicate_alerts: int = Field(ge=0)
+    model_status: str
+    model_version: str | None
+    elapsed_seconds: float | None = Field(default=None, ge=0)
+    failure_reason: str | None
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=1, max_length=128)

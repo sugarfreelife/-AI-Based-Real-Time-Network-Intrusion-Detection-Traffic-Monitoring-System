@@ -360,3 +360,19 @@ This deployment check was completed after the ten planned steps. It updates infr
 - Full Python suite: PASS, 64 tests; the opt-in PostgreSQL integration is run separately below. Bytecode compilation: PASS.
 - Fresh SQLite migration and schema check: PASS, `0004_retry_safe_replay (head)`, no new upgrade operations detected.
 - Disposable PostgreSQL migration and integration: PASS, 1 test. The migration was applied, retry persistence was exercised, and the isolated project and volume were removed.
+
+## Step 14 of 20 — Capture history API
+
+**Status:** Implemented and verified against SQLite and PostgreSQL.
+
+### Delivered
+
+- Added authenticated, paginated `GET /api/v1/captures` and `GET /api/v1/captures/{capture_id}` routes for all signed-in roles.
+- Added validated response fields for lifecycle state, packet/flow/prediction/alert counters, retry counts, model identity, timestamps, and failure reason.
+- Added status and timezone-aware start-time filters with stable ordering. Empty results use the standard page shape.
+- Updated API, architecture, and implementation documentation, including the Step 13 retry identity option.
+
+### Verification
+
+- Backend API suite: PASS, 20 tests for authorization, empty/paginated/detail reads, status/time filters, invalid input, and missing captures.
+- Disposable PostgreSQL capture-history integration: PASS, 1 test. Migration through `0004_retry_safe_replay` succeeded; isolated database resources were removed.

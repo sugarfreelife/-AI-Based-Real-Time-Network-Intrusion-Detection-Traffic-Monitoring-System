@@ -23,7 +23,7 @@ python -m nids_engine.monitor `
   --database-url $env:DATABASE_URL
 ```
 
-The monitor creates a new `capture_id` per run. Each flow, prediction status, and related alerts are inserted atomically.
+The monitor creates a new `capture_id` per run. Supply `--capture-id <uuid>` to reuse an ID after an interrupted replay. Identical flow observations are skipped and conflicting data for an existing ID is rejected. Each flow, prediction status, and related alerts are inserted atomically.
 
 ## Endpoints
 
@@ -31,6 +31,8 @@ The monitor creates a new `capture_id` per run. Each flow, prediction status, an
 |---|---|
 | `GET /health/live` | Process liveness; does not require the database. |
 | `GET /health/ready` | Execute a database connectivity check; returns 503 when unavailable. |
+| `GET /api/v1/captures` | List capture runs with `limit` (1–100), `offset`, `status`, `since`, and `until` filters. |
+| `GET /api/v1/captures/{capture_id}` | Read one capture run, including packet, flow, prediction, alert, retry, and failure counters. |
 | `GET /api/v1/flows` | List flows with `limit` (1–100), `offset`, `protocol`, `since`, and `until` filters. |
 | `GET /api/v1/flows/{id}` | Read one persisted flow with its prediction result. `{id}` is the database record ID. |
 | `GET /api/v1/alerts` | List alerts with `limit`, `offset`, `severity`, `status`, `detection_code`, `since`, and `until` filters. |
@@ -43,13 +45,15 @@ The monitor creates a new `capture_id` per run. Each flow, prediction status, an
 | `PATCH /api/v1/alerts/{id}/acknowledge` | Acknowledge an alert; analyst or administrator only. |
 | `WS /api/v1/ws/alerts` | Stream newly persisted alerts to authenticated clients. |
 
-All list responses use `{ "items": [], "total": 0, "limit": 50, "offset": 0 }`. Date filters require timezone-aware ISO-8601 values. `since` must not be later than `until`. Ordering is newest event time first with a stable ID tie-breaker.
+All list responses use `{ "items": [], "total": 0, "limit": 50, "offset": 0 }`. Date filters require timezone-aware ISO-8601 values. `since` must not be later than `until`. Capture history filters `started_at`; its status is `running`, `completed`, `partial`, or `failed`. Ordering is newest start time first with a stable capture ID tie-breaker.
 
 Example requests:
 
 ```text
 GET http://127.0.0.1:8000/api/v1/flows?protocol=TCP&limit=25&offset=0
 GET http://127.0.0.1:8000/api/v1/alerts?severity=high&status=new&limit=25
+GET http://127.0.0.1:8000/api/v1/captures?status=failed&limit=25
+GET http://127.0.0.1:8000/api/v1/captures/550e8400-e29b-41d4-a716-446655440000
 ```
 
 Unknown records return 404. Invalid pagination, protocol, severity, status, or time ranges return 422. Database readiness returns 503 when the database cannot execute a simple query. Responses contain persisted observations only; the API does not create demo records or metrics.
@@ -64,7 +68,7 @@ Run `python -m backend.app.auth_admin --username admin` after applying migration
 
 Passwords are hashed with Argon2id through `pwdlib`. Usernames are normalized to lowercase and are unique. Passwords must be 12–128 characters. The role matrix is:
 
-| Role | Read flows and alerts | Receive alert stream | Acknowledge alerts | Create users |
+| Role | Read captures, flows, and alerts | Receive alert stream | Acknowledge alerts | Create users |
 |---|---:|---:|---:|---:|
 | viewer | Yes | Yes | No | No |
 | analyst | Yes | Yes | Yes | No |

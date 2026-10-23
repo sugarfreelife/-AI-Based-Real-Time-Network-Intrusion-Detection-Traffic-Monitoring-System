@@ -10,11 +10,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend.app.api.auth import _audit, get_current_user, require_roles
-from backend.app.database.models import AlertDB, FlowRecordDB, UserDB
+from backend.app.database.models import AlertDB, CaptureRunDB, FlowRecordDB, UserDB
 from backend.app.database.session import get_session
-from backend.app.schemas import AlertRead, FlowRead, Page
+from backend.app.schemas import AlertRead, CaptureRunRead, FlowRead, Page
 
 router = APIRouter(prefix="/api/v1")
+
+CaptureStatus = Literal["running", "completed", "partial", "failed"]
 
 
 def _validate_range(since: datetime | None, until: datetime | None) -> None:
@@ -23,6 +25,52 @@ def _validate_range(since: datetime | None, until: datetime | None) -> None:
             raise HTTPException(status_code=422, detail=f"{name} must include a timezone")
     if since is not None and until is not None and since > until:
         raise HTTPException(status_code=422, detail="since must be earlier than or equal to until")
+
+
+@router.get("/captures", response_model=Page[CaptureRunRead])
+def list_capture_runs(
+    session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    capture_status: Annotated[CaptureStatus | None, Query(alias="status")] = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> Page[CaptureRunRead]:
+    """List persisted capture attempts, filtering time ranges by start time."""
+
+    _validate_range(since, until)
+    statement = select(CaptureRunDB)
+    count_statement = select(func.count()).select_from(CaptureRunDB)
+    conditions = []
+    if capture_status is not None:
+        conditions.append(CaptureRunDB.status == capture_status)
+    if since is not None:
+        conditions.append(CaptureRunDB.started_at >= since)
+    if until is not None:
+        conditions.append(CaptureRunDB.started_at <= until)
+    if conditions:
+        statement = statement.where(*conditions)
+        count_statement = count_statement.where(*conditions)
+    total = int(session.scalar(count_statement) or 0)
+    records = session.scalars(
+        statement.order_by(CaptureRunDB.started_at.desc(), CaptureRunDB.capture_id)
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return Page[CaptureRunRead](items=records, total=total, limit=limit, offset=offset)
+
+
+@router.get("/captures/{capture_id}", response_model=CaptureRunRead)
+def get_capture_run(
+    capture_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
+) -> CaptureRunRead:
+    record = session.get(CaptureRunDB, capture_id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="capture not found")
+    return CaptureRunRead.model_validate(record)
 
 
 @router.get("/flows", response_model=Page[FlowRead])

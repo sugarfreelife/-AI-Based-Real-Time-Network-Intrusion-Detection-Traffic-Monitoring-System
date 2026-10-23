@@ -13,7 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.config import Settings
-from backend.app.database.models import AlertDB, AuditEventDB, FlowRecordDB, UserDB
+from backend.app.database.models import AlertDB, AuditEventDB, CaptureRunDB, FlowRecordDB, UserDB
 from backend.app.database.session import make_engine
 from backend.app.main import create_app
 from backend.app.security import hash_password
@@ -109,6 +109,25 @@ def test_postgres_auth_persistence_acknowledgement_and_websocket() -> None:
             client.headers.update({"Authorization": f"Bearer {tokens['access_token']}"})
             assert client.get("/api/v1/auth/me").json()["username"] == username
 
+            started_at = datetime.now(UTC)
+            with factory() as session, session.begin():
+                session.add(CaptureRunDB(
+                    capture_id=capture_id,
+                    source_name="postgres-integration.pcap",
+                    status="completed",
+                    started_at=started_at,
+                    completed_at=started_at,
+                    packets_seen=2,
+                    packets_processed=2,
+                    flow_count=1,
+                    model_status="missing",
+                ))
+            history = client.get("/api/v1/captures", params={"status": "completed"})
+            assert history.status_code == 200
+            assert history.json()["total"] == 1
+            assert history.json()["items"][0]["capture_id"] == capture_id
+            assert client.get(f"/api/v1/captures/{capture_id}").json()["source_name"] == "postgres-integration.pcap"
+
             flow, prediction, alerts = _create_observation()
             assert alerts
             with factory() as session, session.begin():
@@ -185,6 +204,7 @@ def test_postgres_auth_persistence_acknowledgement_and_websocket() -> None:
             assert logout.status_code == 204
     finally:
         with factory.begin() as session:
+            session.execute(delete(CaptureRunDB).where(CaptureRunDB.capture_id == capture_id))
             session.execute(delete(FlowRecordDB).where(FlowRecordDB.capture_id == capture_id))
             if user_id is not None:
                 session.execute(delete(AuditEventDB).where(AuditEventDB.actor_user_id == user_id))
