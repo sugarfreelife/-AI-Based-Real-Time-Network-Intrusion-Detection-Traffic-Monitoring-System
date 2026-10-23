@@ -57,8 +57,9 @@ Report only measured held-out results. Include test-group counts and class suppo
 | Real labeled dataset and capture groups | BLOCKED until supplied | Dataset manifest and source records |
 | Held-out classifier metrics | NOT AVAILABLE | Training report from a real verified dataset |
 | Software behavior on controlled fixtures | PASS for covered tests | `TESTING.md`; software correctness only |
-| PostgreSQL service integration | Local Compose service verified on 2026-10-22 | `HANDOFF.md` and `TESTING.md` runtime record |
-| Container execution | PASS for image build, migrations, service health, and dashboard/health HTTP | `HANDOFF.md` and `TESTING.md`; PCAP replay still requires a supplied authorized capture |
+| Offline synthetic replay timing | Measured for a fixed software fixture; not research performance | `PROGRESS.md`; environment and workload are recorded |
+| PostgreSQL service integration | PASS in isolated tests and synthetic Compose replay; each test DB is removed | `HANDOFF.md` and `TESTING.md` |
+| Container execution | PASS for final API, monitor, and dashboard images; disposable PostgreSQL/API/monitor replay completed | `HANDOFF.md` and `TESTING.md`; existing local stack was left untouched |
 
 ## 7. Discussion
 
@@ -73,13 +74,13 @@ Report only measured held-out results. Include test-group counts and class suppo
 - Flow/feature implementation mismatch with upstream datasets.
 - Class imbalance, duplicate or near-duplicate flows, unseen attack families, and domain shift.
 - Missing real dataset/model results, PostgreSQL integration, or deployment checks if still blocked.
-- Security limitations such as unconfigured TLS and absent login rate limiting.
+- Security limitations such as unconfigured TLS, process-local rate limiting, and absent access-token revocation lists.
 
 ## 9. Conclusion and future work
 
 - Answer the research question only to the extent supported by evidence.
 - Separate completed software work from planned evaluation and deployment.
-- Next steps: prepare provenance-tracked labels, evaluate on independent captures, verify PostgreSQL and Compose on a capable host, and complete the security review.
+- Next steps: prepare provenance-tracked labels, evaluate on independent captures, validate real-traffic throughput, and complete the security review before public deployment.
 
 ## References and appendices
 

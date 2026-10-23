@@ -6,7 +6,7 @@ This Compose stack is for a local academic demonstration. It defines PostgreSQL,
 
 - Docker Desktop (or another Docker Engine) with Docker Compose v2.
 - A locally generated PostgreSQL password and JWT signing key.
-- An authorized PCAP/PCAPNG file only when running the optional replay demo.
+- An authorized PCAP/PCAPNG file only when replaying real observations. A clearly labelled synthetic fixture is available for a no-capture smoke demo.
 
 The images use version-specific Python, Node, Nginx, and PostgreSQL tags; Python and frontend dependencies come from the checked-in lock files. Review and update these pins as part of planned maintenance.
 
@@ -44,6 +44,27 @@ Sign in with the account you created. With no imported capture, the dashboard sh
 Login protection allows five failed attempts per direct socket peer and normalized username in a five-minute window, then returns `429` for five minutes. Override these defaults with `LOGIN_RATE_LIMIT_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW_SECONDS`, `LOGIN_RATE_LIMIT_BLOCK_SECONDS`, and `LOGIN_RATE_LIMIT_MAX_ENTRIES` in `.env`. The API ignores forwarded client-address headers and the supported launcher disables Uvicorn proxy-header rewriting. Behind a proxy, requests share the proxy's peer address for each username; retain or add edge rate limiting for higher-traffic deployments.
 
 ## Replay an authorized PCAP into the dashboard
+
+### Synthetic software demonstration
+
+Generate a deterministic fixture using reserved documentation IP ranges, then replay it into the local dashboard:
+
+```powershell
+python -m scripts.synthetic_demo --force
+docker compose --profile demo run --rm -e PCAP_PATH=/captures/synthetic-demo-not-real-network.pcap monitor
+```
+
+The generated file contains only synthetic TCP SYN packets and its name is shown in capture history. The rule alerts demonstrate software behavior; they are not real network traffic, an attack sample, or model evaluation. Generated PCAP files are ignored by Git. Re-running creates a new capture record unless `CAPTURE_ID` is explicitly set.
+
+To measure the offline monitor on a temporary synthetic workload without a database or model:
+
+```powershell
+python -m scripts.benchmark_replay --flows 100 --syn-per-flow 24 --runs 5
+```
+
+The report includes end-to-end CLI wall time, packets per second, and derived milliseconds per input packet. It is machine-specific software timing on synthetic input, not field throughput, capture performance, detection quality, or research evidence.
+
+### Authorized PCAP replay
 
 Copy an authorized capture to the ignored local path `pcaps/demo.pcap`:
 

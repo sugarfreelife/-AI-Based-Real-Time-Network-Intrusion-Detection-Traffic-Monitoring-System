@@ -2,67 +2,83 @@
 
 ## Project status
 
-The planned 10-step implementation is complete and pushed on `main` in the user-provided GitHub repository. A post-completion deployment verification has now also run on this host. This handoff reports software verification separately from infrastructure and research evidence.
+The full 20-step implementation is complete. Each step has its own commit on the user-provided GitHub `main` branch. Steps 18 and 19 are `d67a705` and `13d1326`; the Step 20 checkpoint includes this handoff. The system processes authorized offline captures, exposes persisted results through authenticated APIs and a dashboard, and includes reproducible synthetic-only software checks. It has no real labeled dataset or trained project model, so real-world detection quality and classifier performance are unknown.
 
-## Completed steps
+## Completed scope
 
-1. Repository audit, safety defaults, project plan, and progress record.
-2. Packet metadata parsing and offline PCAP/PCAPNG replay.
-3. Bidirectional flow construction and versioned feature extraction.
-4. Provenance-aware dataset preparation, group splits, model training, and evaluation pipeline.
-5. Optional trusted-model inference, explainable rules, and alerts.
-6. Persistence models, migrations, and REST API.
-7. Argon2id/JWT access control, audit events, role permissions, and authenticated alert WebSocket.
-8. Authenticated React dashboard.
-9. Local Compose configuration, deployment/demo instructions, viva guide, and report outline.
-10. Integration checks, security/Git exclusion review, and this evidence-based handoff.
+### Steps 1–10
 
-## Verification results
+Repository foundation and safety defaults; packet parsing and offline replay; bidirectional flows and versioned features; provenance-aware dataset/training pipeline; optional trusted-model inference and explainable rules; persistence, migrations and REST API; authentication, roles, audit, refresh lifecycle and WebSockets; authenticated dashboard; Compose deployment and academic guidance; integration checks and initial handoff.
+
+### Steps 11–20
+
+PostgreSQL integration coverage; capture-run lifecycle; retry-safe replay identity; capture-history API; persisted analytics; overview/history screens; verified model-status/evaluation view; administrator account management with last-admin protection; bounded login throttling; measured synthetic replay, reproducible synthetic demo, route-level dashboard code splitting and final handoff.
+
+## Verification
 
 ### PASS
 
-- Python suite: **60 passed** using `.venv\Scripts\python.exe -m pytest -q --basetemp=.pytest-step10-tmp`.
-- Frontend: strict type-check passed; **5 frontend tests passed**; production build passed.
-- Build output: main JavaScript **309.13 kB**, chart chunk **357.07 kB**, CSS **34.60 kB**, before gzip.
-- Fresh SQLite migration reached Alembic revision `0002_authentication`; `alembic check` reported no new upgrade operations.
-- Replay, monitor, API, administrator provisioning, and training CLI help commands ran.
-- Base Compose stack and optional demo profile both passed `docker compose config --quiet` with transient validation-only secrets.
-- Git ignored `.env`, captures, local datasets/models, database files, and frontend dependencies. The tracked-source scan found no strings matching common private-key or API-key formats.
-- Dashboard type, API/authentication, alert acknowledgement, and WebSocket behavior have software test coverage. The earlier local browser review confirmed sign-in and persisted synthetic fixture rows.
-- Docker Compose images built successfully, and the PostgreSQL, API, and dashboard containers started. PostgreSQL and API reported healthy status.
-- The API applied migrations through `0002_authentication`; `docker compose exec -T api python -m alembic current` reported `0002_authentication (head)`.
-- `http://127.0.0.1:8080/` and `http://127.0.0.1:8080/health/ready` returned HTTP 200. The readiness response reported `{"status":"ready","database":"available"}`.
-- Local `.env` contains generated, ignored credentials. The Compose database volume is persistent. No administrator account has been created yet.
+- Full Python suite: **74 passed, 2 skipped**. The skips are opt-in PostgreSQL integration tests; they were run separately against disposable databases.
+- Step 18 PostgreSQL integration: **2 passed**, covering the existing auth/persistence/WebSocket path and admin account status, audit, session revocation, and last-admin protections. Its `nids-step18` database volume was removed.
+- Step 20 Compose smoke demo: current API and monitor images applied migrations, replayed the generated synthetic file into an isolated PostgreSQL database, and completed with **192 packets, 8 flows, and 8 heuristic alerts**. The capture summary reported persistence enabled. The `nids-step20` containers and database volume were removed, as was the generated PCAP.
+- Frontend suite: **15 passed** across 3 files. `npm run build` passed, including TypeScript compilation.
+- Production dashboard build: the initial JavaScript chunk is **267.48 kB** (84.75 kB gzip); the chart chunk is **337.60 kB** (98.80 kB gzip). No chunk exceeds the bundler's 500 kB warning threshold. The final API, monitor, and dashboard container images built.
+- `docker compose config --quiet` and `git diff --check`: PASS.
+- The host Python launcher could not locate its configured Python installation. Python checks ran in the project container with the workspace mounted read-only; test scratch data stayed in the container.
+- The latest source and UI image were built without restarting the existing `nids-local` stack, to leave its persistent database untouched. Run `docker compose up --build --detach` after configuring `.env` to apply this revision to that stack.
 
-### BLOCKED or NOT TESTED
+### Synthetic software benchmark
 
-- Container PCAP replay was **not tested** because no authorized capture was supplied. Compose image build, PostgreSQL startup, migration execution, API readiness, and dashboard HTTP are now verified.
-- Database-backed authentication and monitor persistence have not yet been exercised against PostgreSQL as a full integration path. PostgreSQL startup, migrations, and API readiness are verified; detailed API/auth behavior remains covered by SQLite integration tests.
-- Real dataset training, model quality, attack-class recall, and real traffic alert accuracy are **blocked** because no provenance-tracked labeled capture set or trusted model was supplied.
-- Live packet capture is **not tested** because Npcap/libpcap support is unavailable.
-- The final browser-level live WebSocket indicator was not rechecked after adding the WebSocket runtime package. Authenticated WebSocket protocol behavior is covered by backend tests.
+Measured in the isolated Linux/WSL2 container using CPython 3.12.15. Each of five fresh monitor CLI processes replayed a temporary fixture of 100 flows × 24 packets (2,400 packets), with no database, model, or live network.
 
-No research metrics or real classifier detection claims should be made from these results. Synthetic test data establishes software behavior only.
+| Measurement | Result |
+|---|---:|
+| Median end-to-end CLI wall time | 23.765572 s |
+| Sample range | 17.579561–25.794867 s |
+| Median throughput | 100.99 packets/s |
+| Median derived wall time per input packet | 9.9023 ms |
 
-## Useful references
+These are machine-specific software timings that include process startup, PCAP reading, flow/features/rule processing, and JSON output. They are not live capture throughput, tail latency, classifier performance, or evidence of detection effectiveness.
 
-- [Setup and local replay](../README.md)
-- [Container deployment and PCAP demo](DEPLOYMENT.md)
-- [API and WebSocket contract](API.md)
-- [Database schema and migrations](DATABASE.md)
-- [Feature schema](FEATURE_SCHEMA.md)
+### NOT AVAILABLE or NOT TESTED
+
+- No provenance-tracked real dataset, trained model, held-out research metrics, or real classifier detections were supplied.
+- Live capture was not tested because the host packet-capture driver/provider is unavailable. Use authorized offline PCAPs unless that environment is configured.
+- Public deployment is not security-reviewed. Compose does not configure TLS; distributed rate limiting and access-token revocation lists are not implemented. Login throttling is process-local and ignores forwarded client-address headers.
+- The local Python environment bootstrap remains broken on this host; supported project checks were run in the Docker runtime instead.
+
+No credentials, raw captures, datasets, or model artifacts were committed. Synthetic records and the measured fixture are software checks only.
+
+## Local demonstration
+
+With `.env` configured and the Compose services started:
+
+```powershell
+python -m scripts.synthetic_demo --force
+docker compose --profile demo run --rm -e PCAP_PATH=/captures/synthetic-demo-not-real-network.pcap monitor
+```
+
+The generated PCAP uses documentation-only IP ranges and SYN-only packets. Capture history retains the explicit `synthetic-demo-not-real-network.pcap` filename. These rule alerts demonstrate the pipeline and are not real traffic, an attack sample, or model evidence. For a controlled replay measurement, see `python -m scripts.benchmark_replay --flows 100 --syn-per-flow 24 --runs 5` and the limitations above.
+
+## Operator actions and future evidence
+
+1. Provision the first administrator with the hidden-password command in [DEPLOYMENT.md](DEPLOYMENT.md), then sign in to the local dashboard.
+2. If real observations are needed, replay only captures the operator is authorized to analyze; packet payloads and captures can contain sensitive information.
+3. Obtain appropriately licensed, provenance-tracked labeled data with independent capture groups before training and reporting model metrics.
+4. Configure a supported packet-capture driver before attempting live capture.
+5. Before any public deployment, add TLS, choose a shared limiter/token-revocation policy, and complete a security review.
+
+## References
+
+- [Setup and project scope](../README.md)
+- [Local deployment and demo](DEPLOYMENT.md)
+- [API and authentication contract](API.md)
+- [Architecture](ARCHITECTURE.md)
+- [Database schema](DATABASE.md)
 - [Detection rules and model operation](DETECTION.md)
-- [ML methodology and evaluation controls](ML_METHODOLOGY.md)
+- [Model methodology](ML_METHODOLOGY.md)
+- [Detailed implementation progress](PROGRESS.md)
+- [Test evidence](TESTING.md)
+- [Known limitations](KNOWN_LIMITATIONS.md)
 - [Viva guide](VIVA_GUIDE.md)
 - [Academic report outline](REPORT_OUTLINE.md)
-- [Detailed step-by-step progress](PROGRESS.md)
-- [Known blockers and limits](KNOWN_LIMITATIONS.md)
-
-## External work needed for stronger claims
-
-1. Provision the first administrator using the hidden-password command in [DEPLOYMENT.md](DEPLOYMENT.md), then sign in at <http://127.0.0.1:8080>.
-2. If desired, replay an authorized capture through the documented offline monitor workflow.
-3. Obtain licensed, provenance-tracked data with verified labels and independent capture groups; train and report held-out results using [ML_METHODOLOGY.md](ML_METHODOLOGY.md).
-4. Review login rate limiting, TLS, token revocation policy, and deployment exposure before any non-local deployment.
-
-These are remaining setup, environment, and data-dependent tasks, not additional implementation steps in the completed 10-step plan. The verified local Compose stack is currently running; `docker compose down` stops it while retaining the database volume.

@@ -1,6 +1,6 @@
 # Viva guide
 
-Use this guide to explain what the repository actually implements. Distinguish software checks from evidence about detection quality. No real labeled dataset, trained model, or performance result is included.
+Use this guide to explain what the repository actually implements. Distinguish software checks from evidence about detection quality. No real labeled dataset, trained model, or real-traffic performance result is included; the final software timing uses a synthetic fixture only.
 
 ## System and packet handling
 
@@ -54,15 +54,17 @@ Persisting observations allows the API and dashboard to query the same records a
 
 ### Which database is implemented and which was tested?
 
-SQLAlchemy models and Alembic migrations support PostgreSQL. SQLite-backed API integration tests pass, and the local Compose PostgreSQL service was verified on 2026-10-22: it became healthy, accepted migrations through `0002_authentication`, and the API readiness route reported database availability. See `HANDOFF.md` for the exact evidence.
+SQLAlchemy models and Alembic migrations support PostgreSQL. SQLite-backed API tests pass. Isolated PostgreSQL integration tests cover authentication/session rotation, persisted alerts and WebSockets, capture history, analytics, user activation, refresh-session revocation, and last-active-admin safeguards. The local Compose PostgreSQL service also passed its health, migration, and API-readiness checks. See `HANDOFF.md` for exact evidence.
 
 ### How is the first administrator created?
 
-There is no public registration endpoint. The local admin-provisioning command prompts for the password using hidden input; administrators can then create analyst and viewer accounts through the protected API.
+There is no public registration endpoint. The local admin-provisioning command prompts for the password using hidden input. Administrators can create accounts in the User management dashboard or protected API and activate/deactivate accounts. Server-side role checks, audit records, session revocation, self-deactivation rejection, and PostgreSQL last-admin protection apply.
 
 ### How are sessions handled?
 
 Access and refresh tokens are signed JWTs. Access tokens are short-lived. Refresh tokens rotate and their identifiers are stored as hashes; reuse of a rotated refresh token revokes the user's active refresh sessions. The dashboard holds tokens in memory, so a full page reload requires signing in again.
+
+Failed logins are limited per direct socket peer and normalized username using a bounded, process-local fixed window. Blocked requests return `429` with `Retry-After`. Forwarded address headers are ignored. Multi-instance deployments need shared or edge rate limiting.
 
 ### How does alert streaming work?
 
@@ -71,8 +73,9 @@ The WebSocket sends a token in its first frame rather than in the URL. Clients c
 ## Limitations to state clearly
 
 - No real dataset, trained model, research metrics, or real classifier detections are included.
+- A synthetic offline replay benchmark measures software behavior only; it is not network capacity, model quality, or detection effectiveness.
 - The local PostgreSQL and Docker Compose deployment are verified, but have not had a security review for public exposure; Compose publishes only the dashboard on loopback and does not configure TLS.
-- Live capture, login rate limiting, deployed TLS, and access-token revocation lists remain unimplemented or unverified.
+- Live capture, distributed rate limiting, deployed TLS, and access-token revocation lists remain unimplemented or unverified.
 - A checksum detects artifact changes against its metadata but does not authenticate the artifact's author. Only load models from a trusted source.
 - Heuristic alerts can be noisy; thresholds require evaluation on authorized representative traffic.
 

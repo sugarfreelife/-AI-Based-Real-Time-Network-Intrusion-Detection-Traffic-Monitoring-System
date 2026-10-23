@@ -4,7 +4,7 @@ An academic project for processing authorized network traffic or offline PCAP fi
 
 ## Current status
 
-Steps 1–19 are complete; Step 20 of the requested extension is in progress. The project parses PCAP/PCAPNG metadata, builds bidirectional flows, extracts versioned features, prepares labeled data, trains compatible models, replays through optional inference, emits explainable alerts, persists observations, serves authenticated REST reads, acknowledges alerts by role, streams persisted alerts over authenticated WebSockets, and presents persisted records in an authenticated dashboard. The API applies configurable, bounded login throttling; the dashboard includes a time-filtered overview, paginated capture history, a model/evaluation view backed by verified artifact metadata and held-out reports, and administrator-only account management with safe activation controls. Database-backed replay supports stable UUIDs for safe retries. The Docker Compose images have been built and the PostgreSQL, API, and dashboard services were verified locally; the dashboard is available at <http://127.0.0.1:8080>. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. See [docs/HANDOFF.md](docs/HANDOFF.md) for the evidence, setup steps, and remaining limits.
+All 20 implementation steps are complete. The project parses PCAP/PCAPNG metadata, builds bidirectional flows, extracts versioned features, prepares labeled data, trains compatible models, replays through optional inference, emits explainable alerts, persists observations, serves authenticated REST reads, acknowledges alerts by role, streams persisted alerts over authenticated WebSockets, and presents persisted records in an authenticated dashboard. The API applies configurable, bounded login throttling; the dashboard includes a time-filtered overview, paginated capture history, a model/evaluation view backed by verified artifact metadata and held-out reports, and administrator-only account management with safe activation controls. Database-backed replay supports stable UUIDs for safe retries. Compose configuration and final API, monitor, and dashboard images pass build checks; a synthetic-only monitor replay was verified against a disposable PostgreSQL database. The existing local stack was left unchanged; run `docker compose up --build --detach` to apply this revision. No real dataset or trained model is included, so no research metrics or real classifier detections are claimed. See [docs/HANDOFF.md](docs/HANDOFF.md) for the evidence, setup steps, and remaining limits.
 
 ## Planned technology
 
@@ -20,7 +20,7 @@ The work is split into 20 reviewable steps. Each completed step is committed and
 
 ## Safety and data handling
 
-Use only networks and captures you own or are authorized to analyze. PCAPs, datasets, model artifacts, and local environment files are excluded from Git by default. The project will distinguish fixture/demo data from real capture results and will not claim model metrics until a legitimate evaluation has run.
+Use only networks and captures you own or are authorized to analyze. PCAPs, datasets, model artifacts, and local environment files are excluded from Git by default. The project clearly labels synthetic fixtures and does not claim model metrics until a legitimate evaluation has run.
 
 ## Setup
 

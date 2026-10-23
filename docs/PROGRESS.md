@@ -461,7 +461,7 @@ Step 18 adds admin-only user listing and safe activation changes with audit reco
 - SQLite backend suite: PASS, 24 tests, including account listing, role denial, activation, audit privacy, refresh revocation, and last-admin protection.
 - Disposable PostgreSQL integration: PASS, 2 integration tests, including PostgreSQL account activation, audit, session revocation, and last-admin protection. The isolated `nids-step18` database volume and containers were removed.
 - Frontend suite: PASS, 15 tests across 3 files, including account list, activation, account creation, password clearing, and permission failure.
-- `npm run build` (includes TypeScript build): PASS. The 709.18 kB main bundle remains above the 500 kB warning threshold; Step 20 includes code splitting.
+- `npm run build` (includes TypeScript build): PASS. At Step 18 the initial bundle was 709.18 kB; Step 20 subsequently split the dashboard routes and chart into separate chunks.
 - Compose configuration validation: PASS.
 - Python host runtime remains unavailable; backend tests ran in the project container with the workspace mounted read-only. Its only warning was an expected inability to write pytest cache into the read-only mount.
 
@@ -471,7 +471,7 @@ Step 19 adds bounded login abuse controls with configurable limits and safe clie
 
 ## Step 19 of 20 — Login abuse controls
 
-**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+**Status:** Implemented and verified; committed as `13d1326` and pushed to `origin/main`.
 
 ### Delivered
 
@@ -489,4 +489,29 @@ Step 19 adds bounded login abuse controls with configurable limits and safe clie
 
 ### Next task
 
-Step 20 measures controlled replay performance, improves bundle loading, establishes a reproducible local demonstration path, and completes the project handoff.
+Step 20 measured controlled replay performance, improved bundle loading, established a reproducible local demonstration path, and completed the project handoff.
+
+## Step 20 of 20 — Performance, reproducible demo, and final handoff
+
+**Status:** Implemented and verified; the final individual GitHub checkpoint includes this handoff.
+
+### Delivered
+
+- Added `scripts.synthetic_demo` to create a deterministic SYN-only PCAP using documentation-range IP addresses. Its filename and generator output clearly state that it is synthetic and not real network traffic; generated captures remain ignored by Git.
+- Added `scripts.benchmark_replay` to measure the offline monitor CLI on temporary synthetic input with no database, model, or live network. It reports environment, workload, median end-to-end time, packets per second, and derived time per packet.
+- Added lazy-loaded dashboard routes with an accessible loading state. The final production build splits the initial app, routes, and chart into chunks below 500 kB.
+- Ran the synthetic fixture through the Compose monitor against a disposable PostgreSQL database. It persisted 192 packets as 8 flows and 8 rule alerts; its database volume and generated PCAP were removed afterward.
+- Rewrote the final handoff, known limitations, README, architecture, testing evidence, report outline, and viva guide to distinguish software behavior from real-data research evidence.
+
+### Verification
+
+- Full Python suite: PASS, 74 passed and 2 opt-in PostgreSQL tests skipped. The two PostgreSQL integration tests had passed separately in Step 18; the current Step 20 Compose smoke also migrated a fresh database and persisted the synthetic monitor results.
+- Frontend suite: PASS, 15 tests across 3 files. TypeScript build and production build pass.
+- Final bundle: initial JavaScript 267.48 kB (84.75 kB gzip); chart chunk 337.60 kB (98.80 kB gzip); no chunk over 500 kB.
+- Synthetic benchmark: CPython 3.12.15 on Linux/WSL2; 100 flows × 24 packets, 2,400 input packets, 5 runs. Median wall time 23.765572 s; sample range 17.579561–25.794867 s; median 100.99 packets/s and 9.9023 ms per input packet. This includes process startup/output and is not real-network capacity or model performance.
+- `docker compose config --quiet`, final API/monitor/dashboard image builds, and `git diff --check`: PASS.
+- No authorized PCAP or real labeled dataset/model was provided. Live capture, classifier quality, and real-traffic performance remain NOT TESTED/BLOCKED and are not inferred from synthetic results.
+
+### Completion boundary
+
+All planned software steps are complete. First administrator provisioning, real data/model evaluation, live capture setup, and public-deployment security work remain operator/data-dependent actions outside the 20-step implementation.
