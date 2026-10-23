@@ -3,7 +3,7 @@
 ## Product context
 
 - **Audience:** NIDS administrators, analysts, and viewers.
-- **Primary jobs:** Review persisted alerts and flow observations, filter and page through records, inspect evidence, acknowledge alerts when permitted, and sign in/out.
+- **Primary jobs:** Review persisted activity totals, compare traffic and alert trends, inspect capture history, filter and page through flows and alerts, inspect evidence, acknowledge alerts when permitted, and sign in/out.
 - **Target market(s):** Academic technical project; no specific consumer market is inferred.
 - **Active locales:** English interface; browser locale and timezone for date display.
 - **Language/content register:** Concise operational English. Domain terminology follows `docs/API.md`.
@@ -33,6 +33,7 @@
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 |---|---|---|---|---|
 | Read-only tables and filters | Shared `DataTable`/`FilterBar` patterns in dashboard | API list endpoints and URL search params | Desktop table / narrow record cards | Component tests and browser review |
+| Overview analytics | `OverviewPage` with `TrafficTimelineChart` | `/analytics/summary` and `/analytics/timeline` | Hourly / daily buckets; UTC API values / browser-local labels | Range round-trip, empty data, responsive chart and accessible value table |
 | Select/Listbox | Native `<select>` | Browser platform, API enum values | Native only | Keyboard review and narrow layout |
 | Date | `datetime-local` inputs converted to ISO with timezone | API `since`/`until` | Native typed date/time | Filter round-trip and validation |
 | Form | Shared login form | `/auth/token` and `UserCreate` constraints | Sign-in | Keyboard, validation and failure recovery |
@@ -55,8 +56,8 @@
 ## Dataset navigation
 
 - **Admin tables:** No user-management table is included in Step 8; the API's admin-only create-user route remains available through API docs.
-- **Exploratory lists:** Alerts and flows. Tables sort by API order: newest first, stable ID tie-break.
-- **URL state:** Committed filters, page, and page size are query parameters. Credentials and tokens are never in the URL. Temporary filter draft values stay local until Apply.
+- **Exploratory lists:** Capture history, alerts, and flows. Tables sort by API order: newest first, stable ID tie-break. Overview charts display persisted counts for the selected period.
+- **URL state:** Committed filters, date range, timeline interval, page, and page size are query parameters. Credentials and tokens are never in the URL. Temporary filter draft values stay local until Apply.
 - **Page size:** 25 by default; 50 and 100 available, within API limit.
 - **Empty/loading/error:** Keep list frame stable; distinguish loading, first-use empty, filter no-results, and API failure. Failure offers retry; stale results are labeled.
 - **Back/scroll restoration:** Browser back/forward restores URL filters and page. New filter application resets page to 1; out-of-range page is clamped after response.
@@ -67,16 +68,17 @@
 | Operation | Trigger | Pending | Success destination | Success feedback | Failure recovery | Focus outcome | Source ref |
 |---|---|---|---|---|---|---|---|
 | Sign in | Submit credentials | Disable submit, preserve username, never persist password | Intended protected route | Dashboard appears | Inline credential/API message, keep form | Remains on submit button | `/auth/token`, `/auth/me` |
-| Filter | Apply filter form | Keep current rows marked updating | Same route, page 1 | Updated results and count | Retain rows and offer retry | Focus stays on Apply | API list endpoints |
+| Filter | Apply filter form | Keep current rows marked updating | Same route, page 1 | Updated results and count | Retain rows and offer retry | Focus stays on Apply | API list and analytics endpoints |
+| Overview range | Apply UTC range and interval | Keep previous counts/chart marked updating | Overview with range encoded in URL | Summary and timeline use the selected interval | Retain prior data with retry; validation is inline | Focus stays on Apply | `/analytics/summary`, `/analytics/timeline` |
 | Acknowledge | Alert action | Disable that row action only | Same alert list | Row status changes to acknowledged | Keep row new, inline retry feedback | Focus stays at action | `PATCH /alerts/{id}/acknowledge` |
 | Expand details | View details | Immediate | Same route | Evidence/timestamps shown inline | Not applicable | Focus stays on disclosure | Detail schema |
 | Logout | Header action | Disable while request settles | Login | Session cleared | Clear local session regardless of response | Focus username on arrival | `/auth/logout` |
 
 ## Navigation and responsive behavior
 
-- **Route titles:** `Alerts · Network observatory`, `Flows · Network observatory`, and `Sign in · Network observatory`.
+- **Route titles:** `Overview`, `Capture history`, `Alerts`, `Flows`, and `Sign in · Network observatory`.
 - **Route errors / 403:** Missing session returns to sign-in with a safe same-origin return path. A 403 keeps the page visible and explains that the account cannot perform that action.
-- **Route-state:** Alerts and Flows are primary nav links; filters/pagination are query state.
+- **Route-state:** Overview, Capture history, Alerts, and Flows are primary navigation links; date ranges, timeline interval, filters, and pagination are query state.
 - **Navigation transformation:** Fixed left rail on wide screens; compact horizontal nav above content on narrow screens.
 - **Responsive tables:** Desktop semantic table; below 760px show equivalent record cards with all fields and actions.
 - **Truncation:** IDs and endpoints may wrap; full exact values are available in detail expansion. Do not rely on hover for access.
@@ -112,6 +114,6 @@
 
 - **Static commands:** `npm run typecheck`, `npm test`, `npm run build`, premium UI `audit_project.py --mode strict`.
 - **Browser/device/theme:** Chromium/desktop and narrow phone width; light theme only.
-- **Accessibility:** Keyboard through sign-in, nav, filters, rows, disclosure, and acknowledgement; inspect focus and reduced motion.
-- **Sibling flow:** No prior frontend screens; alerts and flows establish the shared list pattern.
+- **Accessibility:** Keyboard through sign-in, navigation, filters, chart interval, tables, disclosures, and acknowledgement; inspect focus and reduced motion. Overview charts include an accessible name and a text table of bucket values.
+- **Sibling flow:** Alerts and flows establish the shared table pattern; Overview and Capture history extend it with aggregate and run-level evidence.
 - **Evidence:** Results are recorded in `docs/PROGRESS.md`; no test data is shown as production telemetry.

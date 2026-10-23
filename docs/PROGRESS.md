@@ -392,3 +392,27 @@ This deployment check was completed after the ten planned steps. It updates infr
 
 - SQLite analytics tests: PASS, 2 tests for persisted counts, filtering, hour/day zero filling, empty data, validation, range limits, and authentication.
 - PostgreSQL analytics aggregation: PASS, 1 integration test verified summary and hourly bucket counts against persisted rows; the isolated project and volume were removed.
+
+## Step 16 of 20 — Overview and history dashboard
+
+**Status:** Implemented, verified, and ready for its individual GitHub checkpoint.
+
+### Delivered
+
+- Added authenticated Overview and Capture History routes, with overview as the default workspace route.
+- Connected the overview to persisted analytics summary and timeline APIs. The chart has a parallel accessible values table, and empty ranges display zero-data guidance instead of placeholder activity.
+- Added URL-backed UTC range and timeline interval filters plus capture history status, range, page, and page-size state. Capture history includes real retry, packet, flow, prediction, alert, model, and failure details from each stored run.
+- Added loading, first-load error/retry, stale-result, filtered-empty, recent-empty, and responsive table/card states.
+- Updated the design and UX contracts, README, implementation plan, known limitations, and test evidence.
+
+### Verification
+
+- Frontend suite: PASS, 10 tests across 3 files, including 5 dashboard regressions for persisted totals, accessible timeline values, URL filters, capture details, pagination offsets, and retry behavior.
+- `npm run typecheck`: PASS.
+- `npm run build`: PASS.
+- `git diff --check`: PASS.
+- Displayed aggregates and capture records come from API responses; no demo or generated totals are embedded in production UI.
+
+### Next task
+
+Step 17 adds truthful model availability and actual evaluation-report views.

@@ -30,3 +30,22 @@ export function toUtcIso(value: string): string | null {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
+
+export function defaultUtcRange(now = new Date(), hours = 24): { since: string; until: string } {
+  const until = now.toISOString()
+  const since = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString()
+  return { since, until }
+}
+
+export function validateDateRange(since: string, until: string, maximumHours?: number): string {
+  const start = new Date(since).getTime()
+  const end = new Date(until).getTime()
+  if (!since || !until || Number.isNaN(start) || Number.isNaN(end)) {
+    return 'Enter both a valid start time and end time.'
+  }
+  if (start > end) return 'The “From” time must be earlier than or equal to the “To” time.'
+  if (maximumHours !== undefined && end - start > maximumHours * 60 * 60 * 1000) {
+    return `This interval supports up to ${maximumHours.toLocaleString()} hours. Choose a shorter range or a wider bucket.`
+  }
+  return ''
+}

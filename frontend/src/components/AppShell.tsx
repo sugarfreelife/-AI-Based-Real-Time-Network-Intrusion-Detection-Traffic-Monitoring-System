@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, Bell, CircleDot, LogOut, RadioTower, Waves } from 'lucide-react'
+import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, LayoutDashboard, LogOut, RadioTower, Waves } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -127,18 +127,31 @@ export function AppShell() {
       : streamStatus === 'reconnecting'
         ? 'Reconnecting alert stream'
         : 'Alert stream offline'
+  const pageTitle = location.pathname.startsWith('/history')
+    ? 'Capture history'
+    : location.pathname.startsWith('/alerts')
+      ? 'Alerts'
+      : location.pathname.startsWith('/flows')
+        ? 'Flows'
+        : 'Overview'
 
   return (
     <AlertStreamContext.Provider value={{ status: streamStatus, receivedCount }}>
       <div className="app-shell">
         <aside className="side-rail" aria-label="Main navigation">
-          <NavLink className="brand-lockup" to="/alerts" aria-label="Network observatory home">
+          <NavLink className="brand-lockup" to="/overview" aria-label="Network observatory home">
             <span className="brand-mark" aria-hidden="true"><RadioTower size={19} strokeWidth={1.7} /></span>
             <span className="brand-copy"><strong>Network</strong><span>observatory</span></span>
           </NavLink>
 
           <div className="rail-caption">Observe</div>
           <nav className="primary-nav">
+            <NavLink to="/overview" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <LayoutDashboard size={17} strokeWidth={1.8} /><span>Overview</span><ArrowRight className="nav-arrow" size={14} />
+            </NavLink>
+            <NavLink to="/history" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <CalendarDays size={17} strokeWidth={1.8} /><span>Capture history</span><ArrowRight className="nav-arrow" size={14} />
+            </NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <Bell size={17} strokeWidth={1.8} /><span>Alerts</span><ArrowRight className="nav-arrow" size={14} />
             </NavLink>
@@ -164,12 +177,14 @@ export function AppShell() {
         </aside>
 
         <div className="mobile-bar">
-          <NavLink className="brand-lockup" to="/alerts" aria-label="Network observatory home">
+          <NavLink className="brand-lockup" to="/overview" aria-label="Network observatory home">
             <span className="brand-mark" aria-hidden="true"><RadioTower size={18} /></span>
             <span className="brand-copy"><strong>Network</strong><span>observatory</span></span>
           </NavLink>
           <button className="text-button mobile-signout" type="button" onClick={() => void handleLogout()} disabled={loggingOut}>Sign out</button>
           <nav className="mobile-nav" aria-label="Main navigation">
+            <NavLink to="/overview" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><LayoutDashboard size={15} />Overview</NavLink>
+            <NavLink to="/history" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><CalendarDays size={15} />History</NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Bell size={16} />Alerts</NavLink>
             <NavLink to="/flows" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Waves size={16} />Flows</NavLink>
           </nav>
@@ -177,7 +192,7 @@ export function AppShell() {
 
         <main className="main-column">
           <div className="topline">
-            <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><strong>{location.pathname.startsWith('/flows') ? 'Flows' : 'Alerts'}</strong></div>
+            <div className="breadcrumbs"><span>Workspace</span><span aria-hidden="true">/</span><strong>{pageTitle}</strong></div>
             <div className={`stream-indicator stream-${streamStatus}`} role="status" aria-live="polite">
               <span className="status-pip" aria-hidden="true" />{streamLabel}
             </div>
