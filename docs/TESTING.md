@@ -70,6 +70,9 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | PostgreSQL-backed account/replay flow | NOT TESTED | No account was provisioned and no authorized capture was supplied. |
 | Real-data model evaluation and live capture | BLOCKED / NOT TESTED | No verified labeled dataset/model or supported live-capture provider is available. |
 | Step 11 isolated PostgreSQL integration test | PASS, 1 test in 8.83 seconds, no warnings | Covered authentication, flow/prediction/alert persistence, acknowledgement, refresh rotation, WebSocket delivery, and cleanup. The disposable `nids-step11` project and volume were removed. |
+| Step 12 monitor/capture-run regression checks | PASS, 20 tests | SQLite success/failure/partial-run lifecycle and existing backend persistence coverage. |
+| Step 12 fresh SQLite migration and schema drift | PASS | Reached `0003_capture_runs (head)`; `alembic check` reported no new upgrade operations. |
+| Step 12 PostgreSQL migration and integration | PASS, 3 tests | Disposable PostgreSQL applied `0003_capture_runs`; PostgreSQL end-to-end and capture-run lifecycle tests passed, then the test volume was removed. |
 
 The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
 

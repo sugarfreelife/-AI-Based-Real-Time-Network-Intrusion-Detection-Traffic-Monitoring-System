@@ -325,3 +325,20 @@ This deployment check was completed after the ten planned steps. It updates infr
 - `docker compose -p nids-step11 up --build --detach --wait postgres api`: PASS; the temporary PostgreSQL service and migrated API became healthy.
 - The opt-in integration test: PASS, 1 test in 8.83 seconds with no warnings. It covered login, authenticated `/me` and flows reads, PostgreSQL flow/prediction/alert persistence, acknowledgement, refresh rotation, authenticated WebSocket handshake and alert delivery, and cleanup.
 - `docker compose -p nids-step11 down --volumes`: PASS; only the isolated test project containers, network, and database volume were removed. The active `nids-local` project was not touched.
+
+## Step 12 of 20 — Capture-run lifecycle
+
+**Status:** Implemented and verified with SQLite and a disposable PostgreSQL project.
+
+### Delivered
+
+- Added Alembic revision `0003_capture_runs` and a capture-run record for source filename, lifecycle status/timestamps, packet parsing/read counts, flow/prediction/alert counts, model status, elapsed time, and bounded failure code.
+- Updated database-backed PCAP replay to create a `running` record, then finalize it as `completed`, `partial`, or `failed`. The stored source is only the filename, not the local path.
+- Preserved the existing monitor failure response contract when the database schema is missing.
+
+### Verification
+
+- Focused monitor/backend suite: PASS, 20 tests.
+- Fresh SQLite Alembic upgrade and drift check: PASS, `0003_capture_runs (head)`, no new upgrade operations detected.
+- Disposable PostgreSQL migration and integration check: PASS, 3 tests; temporary project and volume removed.
+- On a forced process termination, a run can remain `running`; this is surfaced as an incomplete state rather than changed to success.

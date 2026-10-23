@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.app.database.base import Base
 from backend.app.config import Settings
-from backend.app.database.models import AlertDB, AuditEventDB, FlowRecordDB, PredictionDB, RefreshSessionDB, UserDB
+from backend.app.database.models import AlertDB, AuditEventDB, CaptureRunDB, FlowRecordDB, PredictionDB, RefreshSessionDB, UserDB
 from backend.app.main import create_app
 from backend.app.security import hash_password, verify_password
 from backend.app.services.ingestion import persist_observation
@@ -212,6 +212,14 @@ def test_monitor_persists_flow_prediction_and_alert_then_api_reads_it(tmp_path, 
         assert session.query(FlowRecordDB).count() == 1
         assert session.query(PredictionDB).count() == 1
         assert session.query(AlertDB).count() == 1
+        [capture_run] = session.query(CaptureRunDB).all()
+        assert capture_run.status == "completed"
+        assert capture_run.source_name == "capture.pcap"
+        assert capture_run.packets_seen == 2
+        assert capture_run.packets_processed == 2
+        assert capture_run.flow_count == 1
+        assert capture_run.alert_count == 1
+        assert capture_run.completed_at is not None
     client, _tokens = _authenticated_client(persisted_factory)
     response = client.get("/api/v1/alerts")
     assert response.status_code == 200

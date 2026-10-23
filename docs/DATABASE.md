@@ -2,12 +2,27 @@
 
 ## Current schema
 
-The schema stores one row per finalized flow, one prediction result per flow, zero or more alerts per flow, user accounts, refresh sessions, and audit events. `capture_id` identifies one monitor run; `flow_id` is only unique within that run because the flow builder restarts its sequence for each capture.
+The schema stores one row per finalized flow, one prediction result per flow, zero or more alerts per flow, capture-run summaries, user accounts, refresh sessions, and audit events. `capture_id` identifies a monitor run; `flow_id` is only unique within that run because the flow builder restarts its sequence for each capture. The capture-run and flow records share this identifier; the database leaves the relationship unenforced to preserve existing flow rows during migration.
 
 ```mermaid
 erDiagram
     FLOWS ||--o| PREDICTIONS : has
     FLOWS ||--o{ ALERTS : produces
+    CAPTURE_RUNS {
+        string capture_id PK
+        string source_name
+        string status
+        datetime started_at
+        datetime completed_at
+        integer packets_seen
+        integer packets_processed
+        integer parsing_failures
+        integer read_failures
+        integer flow_count
+        integer alert_count
+        string model_status
+        string failure_reason
+    }
     USERS ||--o{ REFRESH_SESSIONS : owns
     USERS ||--o{ AUDIT_EVENTS : acts
     USERS ||--o{ ALERTS : acknowledges
@@ -87,12 +102,14 @@ $env:DATABASE_URL = "sqlite+pysqlite:///./nids.db"
 python -m alembic upgrade head
 ```
 
-The migrations create `flows`, `predictions`, `alerts`, `users`, `refresh_sessions`, `audit_events`, and Alembic's version table. Runtime code never calls `create_all`; schema changes belong in numbered Alembic revisions. After migration, provision the first administrator with `python -m backend.app.auth_admin --username admin`; password input is hidden. Later accounts are created by an authenticated administrator through the API.
+The migrations create `flows`, `predictions`, `alerts`, `capture_runs`, `users`, `refresh_sessions`, `audit_events`, and Alembic's version table. Runtime code never calls `create_all`; schema changes belong in numbered Alembic revisions. After migration, provision the first administrator with `python -m backend.app.auth_admin --username admin`; password input is hidden. Later accounts are created by an authenticated administrator through the API.
 
-PostgreSQL DDL was rendered successfully in offline migration mode. In addition, on 2026-10-22 the Compose PostgreSQL service started healthy and the API applied the migrations through `0002_authentication`; `alembic current` reported that revision as head.
+PostgreSQL DDL was rendered successfully in offline migration mode. On 2026-10-23, a disposable PostgreSQL Compose project also applied migrations through `0003_capture_runs`; the PostgreSQL integration suite passed, and the isolated test volume was removed afterward.
 
 ## Persistence behavior
 
 `nids_engine.monitor --database-url <URL>` stores each finalized flow, its prediction status, and its alerts in one transaction. The monitor writes no flow JSON to standard output until that transaction succeeds. A failed database write stops replay and reports the number of previously completed flows; it does not claim the failed observation was saved.
+
+When a database URL is configured, the monitor writes a `capture_runs` row before reading the PCAP and updates it on completion, partial reads, or handled failure. It stores the source filename rather than the full local path, packet/flow/prediction/alert counts, model status/version, elapsed time, and a bounded failure code. A hard process termination can leave a run marked `running` with no completion time; later history views can show that state without inferring success.
 
 The API reads the same persisted records. Login, refresh rotation, and logout use database-backed sessions; only a SHA-256 digest of each refresh-token `jti` is stored. Audit events contain event and target metadata, not credentials or tokens. Alert acknowledgement updates the alert and records its actor in one transaction. PostgreSQL connectivity, migration startup, and API readiness were verified in Compose; the more detailed API/authentication behavior remains covered by SQLite integration tests.

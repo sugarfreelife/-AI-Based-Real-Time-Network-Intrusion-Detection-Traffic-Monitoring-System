@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.database.base import Base, UTCDateTime
@@ -45,6 +45,36 @@ class FlowRecordDB(Base):
         back_populates="flow", uselist=False, cascade="all, delete-orphan"
     )
     alerts: Mapped[list[AlertDB]] = relationship(back_populates="flow", cascade="all, delete-orphan")
+
+
+class CaptureRunDB(Base):
+    """Operational summary for one offline replay or explicitly started capture."""
+
+    __tablename__ = "capture_runs"
+    __table_args__ = (
+        Index("ix_capture_runs_started_at", "started_at"),
+        Index("ix_capture_runs_status_started", "status", "started_at"),
+    )
+
+    capture_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    packets_seen: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    packets_processed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    packets_filtered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    parsing_failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    read_failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    flow_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    scored_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    unscored_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    alert_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    suppressed_duplicate_alerts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    model_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    model_version: Mapped[str | None] = mapped_column(String(128))
+    elapsed_seconds: Mapped[float | None] = mapped_column(Float)
+    failure_reason: Mapped[str | None] = mapped_column(String(64))
 
 
 class PredictionDB(Base):

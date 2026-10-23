@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -19,6 +22,9 @@ from nids_engine.packet import PacketMetadata
 
 class PersistenceError(RuntimeError):
     """A configured database write failed; replay must stop to avoid silent loss."""
+
+
+logger = logging.getLogger("nids_engine.monitor")
 
 
 def _positive_int(value: str) -> int:
@@ -55,6 +61,16 @@ def _flow_dict(flow: FlowRecord) -> dict[str, Any]:
     }
 
 
+def _failure_code(error: Exception) -> str:
+    if isinstance(error, PersistenceError):
+        return "persistence_error"
+    if isinstance(error, CaptureError):
+        return "capture_error"
+    if isinstance(error, OSError):
+        return "file_error"
+    return "replay_error"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Replay an authorized PCAP through flow aggregation, optional ML inference, and explainable alerts."
@@ -75,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     inference = InferenceEngine.from_path(args.model)
     capture_id = str(uuid4())
+    capture_started_at = datetime.now(UTC)
+    source_name = Path(args.pcap).name[:255] or "capture"
     session_factory = None
     database_engine = None
     if args.database_url:
@@ -83,12 +101,29 @@ def main(argv: list[str] | None = None) -> int:
             from sqlalchemy.orm import sessionmaker
 
             from backend.app.database.session import make_engine
+            from backend.app.database.models import CaptureRunDB
             from backend.app.services.ingestion import persist_observation
 
             database_engine = make_engine(args.database_url)
             session_factory = sessionmaker(bind=database_engine, autoflush=False, expire_on_commit=False)
+            with session_factory.begin() as session:
+                session.add(CaptureRunDB(
+                    capture_id=capture_id,
+                    source_name=source_name,
+                    status="running",
+                    started_at=capture_started_at,
+                    model_status=str(inference.status),
+                    model_version=inference.model_version,
+                ))
         except Exception as exc:
-            print(json.dumps({"monitor_error": "database configuration failed; replay was not started"}), file=sys.stderr)
+            if database_engine is not None:
+                database_engine.dispose()
+            print(json.dumps({
+                "monitor_error": "database write failed; capture run could not be recorded",
+                "capture_id": capture_id,
+                "completed_flows": 0,
+                "failure_reason": _failure_code(exc),
+            }), file=sys.stderr)
             return 1
     else:
         SQLAlchemyError = None
@@ -101,6 +136,39 @@ def main(argv: list[str] | None = None) -> int:
     builder = FlowBuilder()
     counts = {"flows": 0, "scored": 0, "unscored": 0, "alerts": 0}
     prediction_status_counts: dict[str, int] = {}
+    processed_packets = 0
+
+    def update_capture_run(
+        *,
+        status_value: str,
+        stats: Any | None = None,
+        failure_reason: str | None = None,
+    ) -> None:
+        if session_factory is None:
+            return
+        from backend.app.database.models import CaptureRunDB
+
+        try:
+            with session_factory.begin() as session:
+                run = session.get(CaptureRunDB, capture_id)
+                if run is None:
+                    raise PersistenceError("capture run record disappeared during replay")
+                run.status = status_value
+                run.completed_at = datetime.now(UTC)
+                run.packets_seen = int(stats.packets_seen) if stats is not None else processed_packets
+                run.packets_processed = int(stats.packets_processed) if stats is not None else processed_packets
+                run.packets_filtered = int(stats.packets_filtered) if stats is not None else 0
+                run.parsing_failures = int(stats.parsing_failures) if stats is not None else 0
+                run.read_failures = int(stats.read_failures) if stats is not None else 0
+                run.flow_count = int(counts["flows"])
+                run.scored_count = int(counts["scored"])
+                run.unscored_count = int(counts["unscored"])
+                run.alert_count = int(counts["alerts"])
+                run.suppressed_duplicate_alerts = alerts.suppressed_count
+                run.elapsed_seconds = float(stats.elapsed_seconds) if stats is not None else None
+                run.failure_reason = failure_reason
+        except Exception as exc:
+            raise PersistenceError("database write failed while recording capture run status") from exc
 
     def emit_flow(flow: FlowRecord) -> None:
         prediction = inference.predict(flow)
@@ -131,18 +199,26 @@ def main(argv: list[str] | None = None) -> int:
         }, separators=(",", ":")))
 
     def on_packet(metadata: PacketMetadata) -> None:
+        nonlocal processed_packets
         for flow in builder.process(metadata):
             emit_flow(flow)
+        processed_packets += 1
 
     try:
         stats = replay_pcap(args.pcap, on_packet)
         for flow in builder.flush():
             emit_flow(flow)
+        update_capture_run(status_value=stats.status, stats=stats)
     except (CaptureError, OSError, ValueError, PersistenceError) as exc:
+        try:
+            update_capture_run(status_value="failed", failure_reason=_failure_code(exc))
+        except PersistenceError:
+            logger.exception("capture_run_failure_status_write_failed", extra={"capture_id": capture_id})
         print(json.dumps({
             "monitor_error": str(exc),
             "capture_id": capture_id,
             "completed_flows": counts["flows"],
+            "failure_reason": _failure_code(exc),
         }), file=sys.stderr)
         if database_engine is not None:
             database_engine.dispose()
