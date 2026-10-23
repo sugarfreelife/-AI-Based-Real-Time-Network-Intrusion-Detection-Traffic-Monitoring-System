@@ -41,6 +41,8 @@ docker compose exec api python -m backend.app.auth_admin --username admin
 
 Sign in with the account you created. With no imported capture, the dashboard should show its empty state. The project does not load sample alerts or fabricate metrics.
 
+Login protection allows five failed attempts per direct socket peer and normalized username in a five-minute window, then returns `429` for five minutes. Override these defaults with `LOGIN_RATE_LIMIT_ATTEMPTS`, `LOGIN_RATE_LIMIT_WINDOW_SECONDS`, `LOGIN_RATE_LIMIT_BLOCK_SECONDS`, and `LOGIN_RATE_LIMIT_MAX_ENTRIES` in `.env`. The API ignores forwarded client-address headers and the supported launcher disables Uvicorn proxy-header rewriting. Behind a proxy, requests share the proxy's peer address for each username; retain or add edge rate limiting for higher-traffic deployments.
+
 ## Replay an authorized PCAP into the dashboard
 
 Copy an authorized capture to the ignored local path `pcaps/demo.pcap`:

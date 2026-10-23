@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from backend.app.database.models import AuditEventDB, RefreshSessionDB, UserDB
 from backend.app.database.session import get_session
 from backend.app.config import Settings
+from backend.app.rate_limit import LoginRateLimiter, client_address
 from backend.app.schemas import LoginRequest, Page, RefreshRequest, TokenPair, UserCreate, UserRead, UserStatusUpdate
 from backend.app.security import (
     DUMMY_PASSWORD_HASH,
@@ -132,14 +133,28 @@ def login(
     except AuthConfigurationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     username = payload.username.strip().lower()
+    rate_limiter: LoginRateLimiter = request.app.state.login_rate_limiter
+    rate_key = (client_address(request), username)
+    retry_after, should_audit_limit = rate_limiter.check(rate_key)
+    if retry_after is not None:
+        if should_audit_limit:
+            _audit(session, "auth.login_rate_limited", details={"retry_after_seconds": retry_after})
+            session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many failed login attempts; try again later",
+            headers={"Retry-After": str(retry_after)},
+        )
     user = session.scalar(select(UserDB).where(UserDB.username == username))
     valid = verify_password(payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH)
     if user is None or not user.is_active or not valid:
+        rate_limiter.record_failure(rate_key)
         _audit(session, "auth.login_failed", details={"username": username})
         session.commit()
         failed = True
         result = None
     else:
+        rate_limiter.clear(rate_key)
         now = datetime.now(UTC)
         user.last_login_at = now
         _audit(session, "auth.login_succeeded", actor_user_id=user.id, target_type="user", target_id=user.id)

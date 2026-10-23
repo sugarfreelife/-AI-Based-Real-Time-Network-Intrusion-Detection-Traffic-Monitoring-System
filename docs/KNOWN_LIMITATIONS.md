@@ -1,6 +1,6 @@
 # Known Limitations and Blockers
 
-This list reflects Steps 1–18 and the runtime verification available through 2026-10-23. It separates implemented software from unavailable data and remaining validation.
+This list reflects Steps 1–19 and the runtime verification available through 2026-10-23. It separates implemented software from unavailable data and remaining validation.
 
 | Item | Status | Evidence / recovery |
 |---|---|---|
@@ -10,9 +10,9 @@ This list reflects Steps 1–18 and the runtime verification available through 2
 | Docker services | VERIFIED LOCALLY | Compose images built; PostgreSQL and API are healthy; dashboard is serving on `http://127.0.0.1:8080`. See `HANDOFF.md` for exact checks. |
 | PostgreSQL service integration | VERIFIED WITH DISPOSABLE TEST DATABASES | Step 11 covers auth, persistence, acknowledgement, refresh rotation, and authenticated WebSocket delivery; Steps 12–15 cover lifecycle, retry identity, capture history, and analytics using isolated databases. The persistent local Compose stack was separately verified through `0002_authentication`. |
 | Dataset and trained model | NOT PROVIDED | No dataset or model was present in the empty workspace. No model metrics or supported attack classes can be claimed until data is acquired and evaluated. |
-| Full NIDS application | IN PROGRESS; LOCAL DEPLOYMENT VERIFIED | Steps 1–18 are implemented, including overview analytics, capture history, truthful model/evaluation state, and audited administrator account controls. Steps 19–20 remain. First administrator provisioning and authorized PCAP replay remain operator actions. No real model is trained. |
+| Full NIDS application | IN PROGRESS; LOCAL DEPLOYMENT VERIFIED | Steps 1–19 are implemented, including overview analytics, capture history, truthful model/evaluation state, audited administrator account controls, and bounded login throttling. Step 20 remains. First administrator provisioning and authorized PCAP replay remain operator actions. No real model is trained. |
 | PostgreSQL authentication and persistence integration | PARTIALLY VERIFIED | Isolated PostgreSQL integration tests cover login, refresh rotation, role-protected actions, administrator account deactivation/session revocation, last-admin protection, persisted alerts, WebSockets, captures, and analytics. Local Compose verifies startup, migrations, and readiness. Containerized monitor replay was not tested because no authorized PCAP was supplied. |
-| Authentication hardening | PARTIAL | Access/refresh lifecycles, role checks, Argon2id, account deactivation/session revocation, and audit events have local coverage. Bounded login rate limiting is Step 19; access-token revocation lists and a security review under a deployed TLS configuration are not implemented. Dashboard tokens are held in memory and require sign-in again after a full page reload. |
+| Authentication hardening | PARTIAL | Access/refresh lifecycles, role checks, Argon2id, account deactivation/session revocation, audit events, and process-local bounded login throttling have local coverage. Distributed rate limiting, access-token revocation lists, and a security review under a deployed TLS configuration are not implemented. Forwarded client-address headers are ignored, so clients behind a proxy share the proxy's address bucket for a given username. Dashboard tokens are held in memory and require sign-in again after a full page reload. |
 | Python environment bootstrap | DEGRADED | `python -m venv` failed during `ensurepip` because the base Python launcher reports that it cannot resolve `C:\Python314\python.exe`. The partial local `.venv` can run the installed project modules, but has no `pip` module. Installing the project entry-point scripts was not verified; a targeted install also hit a permission error in the sandbox temporary directory. |
 
 No packet captures, datasets, credentials, or generated model artifacts should be committed.

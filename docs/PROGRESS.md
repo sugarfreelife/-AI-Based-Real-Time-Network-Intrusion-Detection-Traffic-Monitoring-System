@@ -446,7 +446,7 @@ Step 18 adds admin-only user listing and safe activation changes with audit reco
 
 ## Step 18 of 20 — Administrator user management
 
-**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+**Status:** Implemented and verified; committed as `d67a705` and pushed to `origin/main`.
 
 ### Delivered
 
@@ -468,3 +468,25 @@ Step 18 adds admin-only user listing and safe activation changes with audit reco
 ### Next task
 
 Step 19 adds bounded login abuse controls with configurable limits and safe client-address handling.
+
+## Step 19 of 20 — Login abuse controls
+
+**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+
+### Delivered
+
+- Added configurable limits for failures per peer/username, fixed-window length, block duration, and maximum tracked keys. Environment values are range-checked when settings load.
+- Added a thread-safe, process-local limiter with bounded storage. At capacity, new keys share a conservative overflow bucket rather than evicting active lockouts.
+- Login now rejects blocked requests with HTTP 429 and `Retry-After`, resets a key after a successful sign-in, and keeps the existing generic invalid-credentials response before lockout.
+- The limiter uses the direct socket peer plus normalized username. Forwarded headers are ignored, and the supported Uvicorn launcher disables proxy-header rewriting. The first rejected request per active blocked key is audited without storing a client address or credentials; repeated rejections do not create repeated rows.
+- Added deployment settings and documented proxy, multi-worker, and distributed-limiter boundaries.
+
+### Verification
+
+- Backend suite: PASS, 28 tests. New coverage verifies lockout, reset, block/window expiry, one-time audit behavior, absence of forwarded address/password data, capacity overflow behavior, configuration bounds, and proxy-header disabling.
+- `docker compose config --quiet`: PASS.
+- The host Python launcher remains unavailable; tests ran in the project container with the workspace mounted read-only.
+
+### Next task
+
+Step 20 measures controlled replay performance, improves bundle loading, establishes a reproducible local demonstration path, and completes the project handoff.

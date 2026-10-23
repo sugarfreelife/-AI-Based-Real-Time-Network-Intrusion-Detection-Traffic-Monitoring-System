@@ -2,7 +2,7 @@
 
 ## Current result
 
-Step 1 began with no application code or test suite. The original 10-step plan is complete; Steps 11–13 extend the project. The Step 10 baseline had 60 passing Python tests and five frontend tests. The Python launcher still emits a location warning, but the project-local Python executable runs the checks.
+Step 1 began with no application code or test suite. The original 10-step plan and extension through Step 19 are implemented; Step 10's 60-Python-test/five-frontend-test result is a historical baseline. The host Python launcher now fails to locate its configured Python installation, so current backend suites run in the project container with the workspace mounted read-only; frontend checks run with the locked Node dependencies.
 
 The initial Step 10 audit could not access Docker due to named-pipe permissions. On 2026-10-22, elevated local execution succeeded: Compose images built, PostgreSQL/API became healthy, migrations ran through `0002_authentication`, and the dashboard and database readiness endpoint returned HTTP 200. The exact runtime follow-up is recorded below. No authorized PCAP or labeled research dataset was supplied.
 
@@ -85,6 +85,7 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | Step 16 dashboard regressions | PASS, 10 frontend tests | Three existing tests and five new dashboard tests cover persisted aggregate rendering, accessible timeline values, URL-backed intervals, capture details and status filters, pagination/offsets, and retryable errors. `npm run typecheck` and `npm run build` pass. |
 | Step 17 model status and evaluation | PASS | 12 frontend tests across 3 files; API tests cover authenticated not-configured and configured-missing states; training tests verify report SHA-256 binding, valid held-out display, and suppression of a changed report. Strict type-check/build and the premium UI audit pass. The production bundle is 698.42 kB before gzip and is slated for Step 20 code splitting. |
 | Step 18 administrator user management | PASS | 24 SQLite backend tests; 2 isolated PostgreSQL integration tests; 15 frontend tests. Coverage includes admin-only listing, activation, last-admin and self-deactivation guards, audit privacy, immediate access blocking, refresh-session revocation, account creation, and permission errors. Production build and Compose configuration pass; the 709.18 kB main bundle still needs Step 20 splitting. |
+| Step 19 login abuse controls | PASS | 28 backend tests pass. Coverage includes configured limits and startup bounds, same-peer throttling despite changing `X-Forwarded-For`, `429` plus `Retry-After`, one audit entry per blocked window without credentials/client address, successful-login reset, lockout/window expiry, bounded overflow behavior, and launcher proxy-header disabling. Compose config validates. |
 
 The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
 

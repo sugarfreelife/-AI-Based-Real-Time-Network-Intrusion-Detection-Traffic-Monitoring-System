@@ -16,7 +16,8 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
 
-    uvicorn.run("backend.app.main:app", host=args.host, port=args.port, reload=args.reload)
+    # Authentication throttling uses the socket peer. Never let forwarded headers rewrite it.
+    uvicorn.run("backend.app.main:app", host=args.host, port=args.port, reload=args.reload, proxy_headers=False)
     return 0
 
 

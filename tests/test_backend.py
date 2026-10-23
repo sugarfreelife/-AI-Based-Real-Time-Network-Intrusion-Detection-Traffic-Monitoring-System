@@ -15,6 +15,7 @@ from backend.app.database.base import Base
 from backend.app.config import Settings
 from backend.app.database.models import AlertDB, AuditEventDB, CaptureRunDB, FlowRecordDB, PredictionDB, RefreshSessionDB, UserDB
 from backend.app.main import create_app
+from backend.app.rate_limit import LoginRateLimiter
 from backend.app.security import hash_password, verify_password
 from backend.app.services.ingestion import persist_observation
 from nids_engine.detection import AlertEngine
@@ -547,6 +548,143 @@ def test_argon2id_login_and_failed_login_are_audited(session_factory) -> None:
         assert "auth.login_succeeded" in event_types
         assert "auth.login_failed" in event_types
         assert session.query(RefreshSessionDB).count() == 1
+
+
+def test_login_throttling_ignores_forwarded_headers_expires_and_resets(session_factory, monkeypatch) -> None:
+    from dataclasses import replace
+
+    config = replace(
+        TEST_SETTINGS,
+        login_rate_limit_attempts=2,
+        login_rate_limit_window_seconds=60,
+        login_rate_limit_block_seconds=30,
+        login_rate_limit_max_entries=8,
+    )
+    client, _tokens = _authenticated_client(session_factory, auth_config=config)
+    now = [100.0]
+    monkeypatch.setattr(client.app.state.login_rate_limiter, "_clock", lambda: now[0])
+
+    for forwarded_ip in ("203.0.113.10", "198.51.100.22"):
+        failed = client.post(
+            "/api/v1/auth/token",
+            json={"username": "test-admin", "password": "wrong-password"},
+            headers={"X-Forwarded-For": forwarded_ip},
+        )
+        assert failed.status_code == 401
+    blocked = client.post(
+        "/api/v1/auth/token",
+        json={"username": "test-admin", "password": TEST_PASSWORD},
+        headers={"X-Forwarded-For": "192.0.2.200"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "30"
+    assert blocked.json()["detail"] == "too many failed login attempts; try again later"
+    assert client.post(
+        "/api/v1/auth/token",
+        json={"username": "test-admin", "password": "wrong-password"},
+        headers={"X-Forwarded-For": "192.0.2.201"},
+    ).status_code == 429
+
+    now[0] += 31
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": TEST_PASSWORD}
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": "wrong-password"}
+    ).status_code == 401
+    # A success clears the prior failure, so one wrong password still permits a correct retry.
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": TEST_PASSWORD}
+    ).status_code == 200
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": "wrong-password"}
+    ).status_code == 401
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": "wrong-password"}
+    ).status_code == 401
+    assert client.post(
+        "/api/v1/auth/token", json={"username": "test-admin", "password": TEST_PASSWORD}
+    ).status_code == 429
+
+    with session_factory() as session:
+        failed_events = session.scalars(
+            select(AuditEventDB).where(AuditEventDB.event_type == "auth.login_failed")
+        ).all()
+        limited_events = session.scalars(
+            select(AuditEventDB).where(AuditEventDB.event_type == "auth.login_rate_limited")
+        ).all()
+        assert len(failed_events) == 5
+        assert len(limited_events) == 2
+        assert all("wrong-password" not in str(event.details) for event in failed_events)
+        assert all("password" not in event.details and "client_ip" not in event.details for event in limited_events)
+        assert all("X-Forwarded-For" not in str(event.details) for event in [*failed_events, *limited_events])
+
+
+def test_login_rate_limiter_window_expiry_and_bounded_overflow_bucket() -> None:
+    now = [0.0]
+    limiter = LoginRateLimiter(
+        attempts=2,
+        window_seconds=10,
+        block_seconds=5,
+        max_entries=2,
+        clock=lambda: now[0],
+    )
+    expired_key = ("192.0.2.1", "analyst.one")
+    limiter.record_failure(expired_key)
+    now[0] = 10
+    assert limiter.check(expired_key) == (None, False)
+    limiter.record_failure(expired_key)
+    assert limiter.check(expired_key) == (None, False)
+    limiter.record_failure(expired_key)
+    assert limiter.check(expired_key) == (5, True)
+    now[0] = 14.5
+    assert limiter.check(expired_key) == (1, False)
+    now[0] = 15
+    assert limiter.check(expired_key) == (None, False)
+
+    bounded = LoginRateLimiter(
+        attempts=2,
+        window_seconds=60,
+        block_seconds=30,
+        max_entries=2,
+        clock=lambda: now[0],
+    )
+    bounded.record_failure(("192.0.2.1", "one"))
+    bounded.record_failure(("192.0.2.1", "two"))
+    bounded.record_failure(("192.0.2.1", "three"))
+    assert len(bounded._entries) == 2
+    assert bounded.check(("192.0.2.1", "four"))[0] == 30
+    bounded.clear(("192.0.2.1", "four"))
+    assert bounded.check(("192.0.2.1", "three"))[0] == 30
+
+
+def test_login_rate_limit_settings_are_configurable_and_bounded(monkeypatch) -> None:
+    for name, value in {
+        "LOGIN_RATE_LIMIT_ATTEMPTS": "7",
+        "LOGIN_RATE_LIMIT_WINDOW_SECONDS": "120",
+        "LOGIN_RATE_LIMIT_BLOCK_SECONDS": "45",
+        "LOGIN_RATE_LIMIT_MAX_ENTRIES": "500",
+    }.items():
+        monkeypatch.setenv(name, value)
+    config = Settings.from_environment()
+    assert config.login_rate_limit_attempts == 7
+    assert config.login_rate_limit_window_seconds == 120
+    assert config.login_rate_limit_block_seconds == 45
+    assert config.login_rate_limit_max_entries == 500
+
+    monkeypatch.setenv("LOGIN_RATE_LIMIT_ATTEMPTS", "0")
+    with pytest.raises(ValueError, match="LOGIN_RATE_LIMIT_ATTEMPTS"):
+        Settings.from_environment()
+
+
+def test_api_launcher_disables_forwarded_header_rewriting(monkeypatch) -> None:
+    import uvicorn
+    from backend.app import cli
+
+    options: dict[str, object] = {}
+    monkeypatch.setattr(uvicorn, "run", lambda *_args, **kwargs: options.update(kwargs))
+    assert cli.main(["--host", "127.0.0.1"]) == 0
+    assert options["proxy_headers"] is False
 
 
 def test_refresh_rotates_tokens_and_detects_reuse(session_factory) -> None:

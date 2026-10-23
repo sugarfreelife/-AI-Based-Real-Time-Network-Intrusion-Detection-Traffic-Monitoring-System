@@ -18,6 +18,7 @@ from backend.app.api.routes import router
 from backend.app.api.websockets import websocket_router
 from backend.app.config import Settings, settings
 from backend.app.database.session import SessionLocal, get_session
+from backend.app.rate_limit import LoginRateLimiter
 from backend.app.services.model_status import ModelStatusProvider
 
 logger = logging.getLogger("backend.health")
@@ -41,6 +42,12 @@ def create_app(
     app.state.session_factory = session_factory
     app.state.auth_config = auth_config
     app.state.model_status = ModelStatusProvider(auth_config.model_path)
+    app.state.login_rate_limiter = LoginRateLimiter(
+        attempts=auth_config.login_rate_limit_attempts,
+        window_seconds=auth_config.login_rate_limit_window_seconds,
+        block_seconds=auth_config.login_rate_limit_block_seconds,
+        max_entries=auth_config.login_rate_limit_max_entries,
+    )
 
     app.add_middleware(
         CORSMiddleware,
