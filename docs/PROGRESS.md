@@ -376,3 +376,19 @@ This deployment check was completed after the ten planned steps. It updates infr
 
 - Backend API suite: PASS, 20 tests for authorization, empty/paginated/detail reads, status/time filters, invalid input, and missing captures.
 - Disposable PostgreSQL capture-history integration: PASS, 1 test. Migration through `0004_retry_safe_replay` succeeded; isolated database resources were removed.
+
+## Step 15 of 20 — Overview analytics API
+
+**Status:** Implemented and verified against SQLite and PostgreSQL.
+
+### Delivered
+
+- Added authenticated `GET /api/v1/analytics/summary` for stored flow, alert, and capture-run counts with protocol, severity, and lifecycle breakdowns.
+- Added authenticated `GET /api/v1/analytics/timeline` with hourly or daily UTC buckets for stored flows and alerts. Empty buckets are filled with zero counts.
+- Defaults both APIs to a 24-hour UTC interval; bounded timeline ranges to 31 days hourly or 366 days daily. Naive timestamps, reversed ranges, and invalid bucket values are rejected.
+- Updated API and architecture documentation with the event timestamp used by each summary count.
+
+### Verification
+
+- SQLite analytics tests: PASS, 2 tests for persisted counts, filtering, hour/day zero filling, empty data, validation, range limits, and authentication.
+- PostgreSQL analytics aggregation: PASS, 1 integration test verified summary and hourly bucket counts against persisted rows; the isolated project and volume were removed.

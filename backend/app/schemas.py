@@ -92,6 +92,30 @@ class CaptureRunRead(BaseModel):
     failure_reason: str | None
 
 
+class AnalyticsSummaryRead(BaseModel):
+    since: datetime
+    until: datetime
+    flow_count: int = Field(ge=0)
+    alert_count: int = Field(ge=0)
+    capture_run_count: int = Field(ge=0)
+    capture_runs_by_status: dict[str, int]
+    alerts_by_severity: dict[str, int]
+    flows_by_protocol: dict[str, int]
+
+
+class AnalyticsBucketRead(BaseModel):
+    timestamp: datetime
+    flow_count: int = Field(ge=0)
+    alert_count: int = Field(ge=0)
+
+
+class AnalyticsTimelineRead(BaseModel):
+    since: datetime
+    until: datetime
+    bucket: Literal["hour", "day"]
+    items: list[AnalyticsBucketRead]
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=1, max_length=128)

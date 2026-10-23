@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Annotated, Literal
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend.app.api.auth import _audit, get_current_user, require_roles
 from backend.app.database.models import AlertDB, CaptureRunDB, FlowRecordDB, UserDB
 from backend.app.database.session import get_session
-from backend.app.schemas import AlertRead, CaptureRunRead, FlowRead, Page
+from backend.app.schemas import (
+    AlertRead,
+    AnalyticsBucketRead,
+    AnalyticsSummaryRead,
+    AnalyticsTimelineRead,
+    CaptureRunRead,
+    FlowRead,
+    Page,
+)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -71,6 +79,133 @@ def get_capture_run(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="capture not found")
     return CaptureRunRead.model_validate(record)
+
+
+def _analytics_range(since: datetime | None, until: datetime | None) -> tuple[datetime, datetime]:
+    _validate_range(since, until)
+    range_end = (until or datetime.now(UTC)).astimezone(UTC)
+    range_start = (since or range_end - timedelta(hours=24)).astimezone(UTC)
+    if range_start > range_end:
+        raise HTTPException(status_code=422, detail="since must be earlier than or equal to until")
+    return range_start, range_end
+
+
+def _group_counts(session: Session, statement: Any) -> dict[str, int]:
+    return {str(key): int(count) for key, count in session.execute(statement).all()}
+
+
+@router.get("/analytics/summary", response_model=AnalyticsSummaryRead)
+def analytics_summary(
+    session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> AnalyticsSummaryRead:
+    """Return persisted aggregate counts for the selected UTC event-time range."""
+
+    range_start, range_end = _analytics_range(since, until)
+    flow_range = (FlowRecordDB.ended_at >= range_start, FlowRecordDB.ended_at <= range_end)
+    alert_range = (AlertDB.occurred_at >= range_start, AlertDB.occurred_at <= range_end)
+    capture_range = (CaptureRunDB.started_at >= range_start, CaptureRunDB.started_at <= range_end)
+    flow_count = int(session.scalar(select(func.count()).select_from(FlowRecordDB).where(*flow_range)) or 0)
+    alert_count = int(session.scalar(select(func.count()).select_from(AlertDB).where(*alert_range)) or 0)
+    capture_run_count = int(session.scalar(select(func.count()).select_from(CaptureRunDB).where(*capture_range)) or 0)
+    capture_statuses = _group_counts(
+        session,
+        select(CaptureRunDB.status, func.count()).where(*capture_range).group_by(CaptureRunDB.status),
+    )
+    alert_severities = _group_counts(
+        session,
+        select(AlertDB.severity, func.count()).where(*alert_range).group_by(AlertDB.severity),
+    )
+    protocols = _group_counts(
+        session,
+        select(FlowRecordDB.protocol, func.count()).where(*flow_range).group_by(FlowRecordDB.protocol),
+    )
+    return AnalyticsSummaryRead(
+        since=range_start,
+        until=range_end,
+        flow_count=flow_count,
+        alert_count=alert_count,
+        capture_run_count=capture_run_count,
+        capture_runs_by_status={
+            key: capture_statuses.get(key, 0) for key in ("running", "completed", "partial", "failed")
+        },
+        alerts_by_severity={
+            key: alert_severities.get(key, 0) for key in ("low", "medium", "high", "critical")
+        },
+        flows_by_protocol=protocols,
+    )
+
+
+def _bucket_expression(session: Session, column: Any, bucket: str) -> Any:
+    dialect = session.get_bind().dialect.name
+    if dialect == "postgresql":
+        return func.date_trunc(bucket, column, literal("UTC"))
+    if dialect == "sqlite":
+        timestamp_format = "%Y-%m-%dT%H:00:00Z" if bucket == "hour" else "%Y-%m-%dT00:00:00Z"
+        return func.strftime(timestamp_format, column)
+    raise HTTPException(status_code=503, detail="analytics bucket queries require PostgreSQL or SQLite")
+
+
+def _bucket_datetime(value: datetime | str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else value
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+@router.get("/analytics/timeline", response_model=AnalyticsTimelineRead)
+def analytics_timeline(
+    session: Annotated[Session, Depends(get_session)],
+    _user: Annotated[UserDB, Depends(get_current_user)],
+    since: datetime | None = None,
+    until: datetime | None = None,
+    bucket: Literal["hour", "day"] = "hour",
+) -> AnalyticsTimelineRead:
+    """Return UTC time buckets for persisted flows and alerts, including empty buckets."""
+
+    range_start, range_end = _analytics_range(since, until)
+    max_range = timedelta(days=31 if bucket == "hour" else 366)
+    if range_end - range_start > max_range:
+        raise HTTPException(status_code=422, detail=f"{bucket} timeline range exceeds {max_range.days} days")
+
+    step = timedelta(hours=1) if bucket == "hour" else timedelta(days=1)
+    if bucket == "hour":
+        bucket_start = range_start.replace(minute=0, second=0, microsecond=0)
+        bucket_end = range_end.replace(minute=0, second=0, microsecond=0)
+    else:
+        bucket_start = range_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        bucket_end = range_end.replace(hour=0, minute=0, second=0, microsecond=0)
+    flow_bucket = _bucket_expression(session, FlowRecordDB.ended_at, bucket)
+    alert_bucket = _bucket_expression(session, AlertDB.occurred_at, bucket)
+    flow_rows = session.execute(
+        select(flow_bucket.label("bucket_at"), func.count())
+        .where(FlowRecordDB.ended_at >= range_start, FlowRecordDB.ended_at <= range_end)
+        .group_by(flow_bucket)
+    ).all()
+    alert_rows = session.execute(
+        select(alert_bucket.label("bucket_at"), func.count())
+        .where(AlertDB.occurred_at >= range_start, AlertDB.occurred_at <= range_end)
+        .group_by(alert_bucket)
+    ).all()
+    flow_counts = {
+        _bucket_datetime(timestamp): int(count) for timestamp, count in flow_rows if timestamp is not None
+    }
+    alert_counts = {
+        _bucket_datetime(timestamp): int(count) for timestamp, count in alert_rows if timestamp is not None
+    }
+
+    items: list[AnalyticsBucketRead] = []
+    current = bucket_start
+    while current <= bucket_end:
+        items.append(AnalyticsBucketRead(
+            timestamp=current,
+            flow_count=flow_counts.get(current, 0),
+            alert_count=alert_counts.get(current, 0),
+        ))
+        current += step
+    return AnalyticsTimelineRead(since=range_start, until=range_end, bucket=bucket, items=items)
 
 
 @router.get("/flows", response_model=Page[FlowRead])

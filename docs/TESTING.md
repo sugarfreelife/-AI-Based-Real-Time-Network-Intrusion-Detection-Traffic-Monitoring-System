@@ -80,6 +80,8 @@ This follow-up updates the infrastructure checks without adding an implementatio
 | Step 13 PostgreSQL idempotency integration | PASS, 1 test | Disposable PostgreSQL applied `0004_retry_safe_replay`; duplicate persistence returned the original record, then the `nids-step13` project and volume were removed. |
 | Step 14 capture history API | PASS, 20 backend tests | Authenticated list/detail, pagination, status/time filters, empty results, validation, 404, and role-based read access passed with SQLite. |
 | Step 14 PostgreSQL capture history | PASS, 1 integration test | Authenticated capture list/detail ran against disposable PostgreSQL; the `nids-step14` project and volume were removed. |
+| Step 15 analytics summary and timeline | PASS, 2 focused tests | SQLite coverage confirms persisted counts, severity/protocol/status breakdowns, UTC ranges, zero-filled hour/day buckets, empty data, input validation, range limits, and authentication. |
+| Step 15 PostgreSQL analytics aggregation | PASS, 1 integration test | PostgreSQL summary and UTC time-bucket SQL returned expected persisted counts; the `nids-step15` project and volume were removed. |
 
 The opt-in PostgreSQL integration test is `tests/test_postgres_integration.py`. It refuses to run unless explicitly enabled and the database name contains `test`. It uses only uniquely named rows and removes them after the run. To exercise it against an isolated Compose project:
 

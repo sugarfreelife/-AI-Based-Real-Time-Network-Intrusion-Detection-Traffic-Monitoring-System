@@ -208,6 +208,99 @@ def test_capture_history_is_authenticated_paginated_and_filterable(session_facto
     assert TestClient(create_app(session_factory, TEST_SETTINGS)).get("/api/v1/captures").status_code == 401
 
 
+def test_analytics_summary_and_timeline_aggregate_persisted_rows(session_factory) -> None:
+    from dataclasses import replace
+    from datetime import timedelta
+
+    base = datetime(2025, 6, 1, 12, tzinfo=UTC)
+    original_flow, original_prediction, _ = _observation()
+    observations = []
+    for index, offset in enumerate((timedelta(0), timedelta(hours=2)), start=1):
+        flow = replace(
+            original_flow,
+            flow_id=f"analytics-flow-{index}",
+            started_at=base + offset,
+            last_seen_at=base + offset + timedelta(seconds=1),
+            ended_at=base + offset + timedelta(seconds=1),
+        )
+        prediction = replace(original_prediction, flow_id=flow.flow_id)
+        alerts = AlertEngine(syn_burst_threshold=2, high_packet_rate_threshold=1_000_000).evaluate(flow, prediction)
+        observations.append((flow, prediction, alerts))
+
+    with session_factory() as session, session.begin():
+        for index, (flow, prediction, alerts) in enumerate(observations, start=1):
+            capture_id = f"analytics-capture-{index}"
+            persist_observation(
+                session,
+                capture_id=capture_id,
+                flow=flow,
+                prediction=prediction,
+                alerts=alerts,
+            )
+            session.add(CaptureRunDB(
+                capture_id=capture_id,
+                source_name=f"analytics-{index}.pcap",
+                status="completed" if index == 1 else "failed",
+                started_at=flow.started_at,
+                completed_at=flow.ended_at,
+                flow_count=1,
+                alert_count=len(alerts),
+                model_status="missing",
+            ))
+
+    client, _tokens = _authenticated_client(session_factory, role="viewer")
+    params = {"since": base.isoformat(), "until": (base + timedelta(hours=3)).isoformat()}
+    summary = client.get("/api/v1/analytics/summary", params=params)
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["flow_count"] == 2
+    assert payload["alert_count"] == 2
+    assert payload["capture_run_count"] == 2
+    assert payload["capture_runs_by_status"] == {"running": 0, "completed": 1, "partial": 0, "failed": 1}
+    assert payload["alerts_by_severity"]["medium"] == 2
+    assert payload["flows_by_protocol"] == {"TCP": 2}
+
+    timeline = client.get("/api/v1/analytics/timeline", params={**params, "bucket": "hour"})
+    assert timeline.status_code == 200
+    items = timeline.json()["items"]
+    assert len(items) == 4
+    assert [item["flow_count"] for item in items] == [1, 0, 1, 0]
+    assert [item["alert_count"] for item in items] == [1, 0, 1, 0]
+
+    daily = client.get(
+        "/api/v1/analytics/timeline",
+        params={"since": base.isoformat(), "until": (base + timedelta(days=1)).isoformat(), "bucket": "day"},
+    )
+    assert daily.status_code == 200
+    assert [item["flow_count"] for item in daily.json()["items"]] == [2, 0]
+
+
+def test_analytics_empty_ranges_validation_and_authentication(session_factory) -> None:
+    client, _tokens = _authenticated_client(session_factory)
+    params = {
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-01-02T00:00:00Z",
+    }
+    summary = client.get("/api/v1/analytics/summary", params=params)
+    assert summary.status_code == 200
+    assert summary.json()["flow_count"] == 0
+    assert summary.json()["alert_count"] == 0
+    assert summary.json()["capture_run_count"] == 0
+    assert summary.json()["alerts_by_severity"] == {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    timeline = client.get("/api/v1/analytics/timeline", params={**params, "bucket": "hour"})
+    assert timeline.status_code == 200
+    assert len(timeline.json()["items"]) == 25
+    assert all(item["flow_count"] == 0 and item["alert_count"] == 0 for item in timeline.json()["items"])
+
+    assert client.get("/api/v1/analytics/summary", params={"since": "2026-01-01T00:00:00"}).status_code == 422
+    assert client.get("/api/v1/analytics/timeline", params={**params, "bucket": "minute"}).status_code == 422
+    assert client.get(
+        "/api/v1/analytics/timeline",
+        params={"since": "2026-01-01T00:00:00Z", "until": "2026-03-01T00:00:00Z", "bucket": "hour"},
+    ).status_code == 422
+    assert TestClient(create_app(session_factory, TEST_SETTINGS)).get("/api/v1/analytics/summary").status_code == 401
+
+
 def test_database_readiness_reports_degraded_state() -> None:
     class BrokenSession:
         def __enter__(self):

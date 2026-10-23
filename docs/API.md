@@ -33,6 +33,8 @@ The monitor creates a new `capture_id` per run. Supply `--capture-id <uuid>` to 
 | `GET /health/ready` | Execute a database connectivity check; returns 503 when unavailable. |
 | `GET /api/v1/captures` | List capture runs with `limit` (1–100), `offset`, `status`, `since`, and `until` filters. |
 | `GET /api/v1/captures/{capture_id}` | Read one capture run, including packet, flow, prediction, alert, retry, and failure counters. |
+| `GET /api/v1/analytics/summary` | Count persisted flows, alerts, and capture runs in a UTC time range, with protocol/severity/status breakdowns. |
+| `GET /api/v1/analytics/timeline` | Return UTC hourly or daily flow and alert counts, including zero-count buckets. |
 | `GET /api/v1/flows` | List flows with `limit` (1–100), `offset`, `protocol`, `since`, and `until` filters. |
 | `GET /api/v1/flows/{id}` | Read one persisted flow with its prediction result. `{id}` is the database record ID. |
 | `GET /api/v1/alerts` | List alerts with `limit`, `offset`, `severity`, `status`, `detection_code`, `since`, and `until` filters. |
@@ -45,7 +47,7 @@ The monitor creates a new `capture_id` per run. Supply `--capture-id <uuid>` to 
 | `PATCH /api/v1/alerts/{id}/acknowledge` | Acknowledge an alert; analyst or administrator only. |
 | `WS /api/v1/ws/alerts` | Stream newly persisted alerts to authenticated clients. |
 
-All list responses use `{ "items": [], "total": 0, "limit": 50, "offset": 0 }`. Date filters require timezone-aware ISO-8601 values. `since` must not be later than `until`. Capture history filters `started_at`; its status is `running`, `completed`, `partial`, or `failed`. Ordering is newest start time first with a stable capture ID tie-breaker.
+All list responses use `{ "items": [], "total": 0, "limit": 50, "offset": 0 }`. Date filters require timezone-aware ISO-8601 values. `since` must not be later than `until`. Capture history filters `started_at`; its status is `running`, `completed`, `partial`, or `failed`. Ordering is newest start time first with a stable capture ID tie-breaker. Analytics endpoints default to the latest 24 hours in UTC when no range is supplied. Summary flow counts use `ended_at`, alert counts use `occurred_at`, and capture counts use `started_at`. Timeline buckets may be `hour` (up to 31 days) or `day` (up to 366 days); omitted buckets default to hour. Empty buckets are returned as zeros.
 
 Example requests:
 
@@ -54,6 +56,8 @@ GET http://127.0.0.1:8000/api/v1/flows?protocol=TCP&limit=25&offset=0
 GET http://127.0.0.1:8000/api/v1/alerts?severity=high&status=new&limit=25
 GET http://127.0.0.1:8000/api/v1/captures?status=failed&limit=25
 GET http://127.0.0.1:8000/api/v1/captures/550e8400-e29b-41d4-a716-446655440000
+GET http://127.0.0.1:8000/api/v1/analytics/summary?since=2026-10-22T00:00:00Z&until=2026-10-23T00:00:00Z
+GET http://127.0.0.1:8000/api/v1/analytics/timeline?bucket=hour&since=2026-10-22T00:00:00Z&until=2026-10-23T00:00:00Z
 ```
 
 Unknown records return 404. Invalid pagination, protocol, severity, status, or time ranges return 422. Database readiness returns 503 when the database cannot execute a simple query. Responses contain persisted observations only; the API does not create demo records or metrics.
@@ -68,7 +72,7 @@ Run `python -m backend.app.auth_admin --username admin` after applying migration
 
 Passwords are hashed with Argon2id through `pwdlib`. Usernames are normalized to lowercase and are unique. Passwords must be 12–128 characters. The role matrix is:
 
-| Role | Read captures, flows, and alerts | Receive alert stream | Acknowledge alerts | Create users |
+| Role | Read capture, flow, alert, and analytics data | Receive alert stream | Acknowledge alerts | Create users |
 |---|---:|---:|---:|---:|
 | viewer | Yes | Yes | No | No |
 | analyst | Yes | Yes | Yes | No |

@@ -60,6 +60,8 @@ Step 13 allows an operator-supplied capture UUID. Replays with the same capture 
 
 Step 14 exposes authenticated capture-run history and detail reads. The list is paginated and can filter by status and timezone-aware start-time bounds; all account roles can read it.
 
+Step 15 adds authenticated summary and timeline queries. Counts come directly from persisted flow end times, alert event times, and capture start times. Hourly or daily UTC buckets are zero-filled within a bounded range; empty databases return zero counts rather than sample values.
+
 ## Implemented in Step 7
 
 `backend.app.security` uses Argon2id password hashes and HS256 JWTs with explicit issuer, audience, token type, expiry, and required claims. Access tokens expire after 15 minutes; refresh tokens are rotated, and the database stores only a one-way digest of each refresh `jti`. Refresh-token reuse revokes all active refresh sessions for that account. No public registration route exists; the first admin is created by `python -m backend.app.auth_admin` after migrations. REST data routes and the WebSocket require an active database user. Admins create users, analysts and admins acknowledge alerts, and all roles can read/stream. Audit records capture login, refresh, logout, account creation, and acknowledgement events without credentials. The WebSocket authenticates its first frame and polls persisted alerts so a separate monitor process can publish data without an in-process broker. SQLite test coverage passes; PostgreSQL migrations and service readiness were also verified in the local Compose deployment on 2026-10-22.

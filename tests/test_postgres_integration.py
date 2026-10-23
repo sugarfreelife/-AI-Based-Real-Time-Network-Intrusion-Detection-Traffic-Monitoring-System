@@ -150,6 +150,19 @@ def test_postgres_auth_persistence_acknowledgement_and_websocket() -> None:
                 )
             assert retried.created is False
             assert retried.record.id == flow_record_id
+            analytics_params = {
+                "since": (started_at - timedelta(seconds=1)).isoformat(),
+                "until": (started_at + timedelta(minutes=10)).isoformat(),
+            }
+            aggregate = client.get("/api/v1/analytics/summary", params=analytics_params)
+            assert aggregate.status_code == 200
+            assert aggregate.json()["flow_count"] == 1
+            assert aggregate.json()["alert_count"] == len(alerts)
+            assert aggregate.json()["capture_run_count"] == 1
+            timeline = client.get("/api/v1/analytics/timeline", params={**analytics_params, "bucket": "hour"})
+            assert timeline.status_code == 200
+            assert sum(item["flow_count"] for item in timeline.json()["items"]) == 1
+            assert sum(item["alert_count"] for item in timeline.json()["items"]) == len(alerts)
             assert client.get("/api/v1/flows").json()["items"][0]["id"] == flow_record_id
 
             alert_id = alerts[0].alert_id
