@@ -14,7 +14,7 @@
 
 | Domain / scope | Authoritative source | Source type | Reviewed date |
 |---|---|---|---|
-| Permissions, auth, routes, filters, stream | `docs/API.md`, `backend/app/api/auth.py`, `backend/app/api/routes.py`, `backend/app/api/websockets.py` | API and server authorization | 2026-10-22 |
+| Permissions, auth, routes, filters, stream | `docs/API.md`, `backend/app/api/auth.py`, `backend/app/api/routes.py`, `backend/app/api/websockets.py` | API and server authorization | 2026-10-23 |
 | Persisted flow and alert fields | `backend/app/schemas.py`, `backend/app/database/models.py` | Data contract | 2026-10-22 |
 | Product scope | `docs/IMPLEMENTATION_PLAN.md`, `docs/ARCHITECTURE.md` | Project plan and architecture | 2026-10-22 |
 
@@ -35,12 +35,13 @@
 | Read-only tables and filters | Shared `DataTable`/`FilterBar` patterns in dashboard | API list endpoints and URL search params | Desktop table / narrow record cards | Component tests and browser review |
 | Overview analytics | `OverviewPage` with `TrafficTimelineChart` | `/analytics/summary` and `/analytics/timeline` | Hourly / daily buckets; UTC API values / browser-local labels | Range round-trip, empty data, responsive chart and accessible value table |
 | Model status and evaluation | `ModelPage` | `/model/status`, configured trusted artifact, matching evaluation report | Explicit unavailable states; verified report only | No-model state, checksum/report mismatch, accessible per-class and confusion tables |
+| User management | `UserManagementPage` | `/auth/users`, `/auth/users/{id}/status`; server-side admin role, audit trail, refresh-session revocation | Admin-only register and account create/status actions; desktop table / phone cards | Role denial, create validation, successful deactivation, pagination, own-account protection |
 | Select/Listbox | Native `<select>` | Browser platform, API enum values | Native only | Keyboard review and narrow layout |
 | Date | `datetime-local` inputs converted to ISO with timezone | API `since`/`until` | Native typed date/time | Filter round-trip and validation |
-| Form | Shared login form | `/auth/token` and `UserCreate` constraints | Sign-in | Keyboard, validation and failure recovery |
+| Form | Login and user creation forms | `/auth/token` and `UserCreate` constraints | Sign-in; administrator creates analyst/viewer/admin accounts | Keyboard, validation and failure recovery |
 | Scrollbar | Global CSS baseline in `frontend/src/styles.css` | CSS standard scrollbar properties with WebKit fallback | Global; no geometry variants | Desktop and narrow scroll surfaces |
 | Toast | None; inline status/banner owner | N/A | Persistent inline feedback | Live region review |
-| CRUD | Alert-row action, pessimistic update | `PATCH /alerts/{id}/acknowledge` | Single-record acknowledgement only | Role check, pending and failure state |
+| CRUD | Alert acknowledgement and admin user management | Alert acknowledgement and `/auth/users` status APIs | Single-record acknowledgement, account creation, or status change | Server role check, pending state, audit feedback, last-admin protection |
 | Detail view | Inline expandable row | Alert/flow read schemas | Inline | Keyboard and narrow layout |
 
 ## Component behavior
@@ -56,7 +57,7 @@
 
 ## Dataset navigation
 
-- **Admin tables:** No user-management table is included in Step 8; the API's admin-only create-user route remains available through API docs.
+- **Admin tables:** The admin-only User management page lists and creates accounts and allows safe status changes. Server role checks remain authoritative; deactivation revokes refresh sessions.
 - **Exploratory lists:** Capture history, alerts, and flows. Tables sort by API order: newest first, stable ID tie-break. Overview charts display persisted counts for the selected period.
 - **URL state:** Committed filters, date range, timeline interval, page, and page size are query parameters. Credentials and tokens are never in the URL. Temporary filter draft values stay local until Apply.
 - **Page size:** 25 by default; 50 and 100 available, within API limit.
@@ -72,14 +73,16 @@
 | Filter | Apply filter form | Keep current rows marked updating | Same route, page 1 | Updated results and count | Retain rows and offer retry | Focus stays on Apply | API list and analytics endpoints |
 | Overview range | Apply UTC range and interval | Keep previous counts/chart marked updating | Overview with range encoded in URL | Summary and timeline use the selected interval | Retain prior data with retry; validation is inline | Focus stays on Apply | `/analytics/summary`, `/analytics/timeline` |
 | Acknowledge | Alert action | Disable that row action only | Same alert list | Row status changes to acknowledged | Keep row new, inline retry feedback | Focus stays at action | `PATCH /alerts/{id}/acknowledge` |
+| Create account | Admin submits a valid username, temporary password, and role | Disable the create action and retain the form | User management, first page | Inline success; clear all credential fields and refresh the register | Keep the form and show the API/validation message | Focus stays on submit | `POST /auth/users` |
+| Change account status | Admin selects Activate or Deactivate | Disable only that account action | Same register | Update the row and announce the new status; deactivation revokes refresh sessions | Keep the prior status and show the API conflict/error | Focus stays at action | `PATCH /auth/users/{id}/status` |
 | Expand details | View details | Immediate | Same route | Evidence/timestamps shown inline | Not applicable | Focus stays on disclosure | Detail schema |
 | Logout | Header action | Disable while request settles | Login | Session cleared | Clear local session regardless of response | Focus username on arrival | `/auth/logout` |
 
 ## Navigation and responsive behavior
 
-- **Route titles:** `Overview`, `Capture history`, `Model & evaluation`, `Alerts`, `Flows`, and `Sign in · Network observatory`.
+- **Route titles:** `Overview`, `Capture history`, `Model & evaluation`, `Alerts`, `Flows`, `User management` (admin only), and `Sign in · Network observatory`.
 - **Route errors / 403:** Missing session returns to sign-in with a safe same-origin return path. A 403 keeps the page visible and explains that the account cannot perform that action.
-- **Route-state:** Overview, Capture history, Model & evaluation, Alerts, and Flows are primary navigation links; date ranges, timeline interval, filters, and pagination are query state.
+- **Route-state:** Overview, Capture history, Model & evaluation, Alerts, and Flows are primary links; User management is added for administrators. Date ranges, timeline interval, filters, and pagination are query state.
 - **Navigation transformation:** Fixed left rail on wide screens; compact horizontal nav above content on narrow screens.
 - **Responsive tables:** Desktop semantic table; below 760px show equivalent record cards with all fields and actions.
 - **Truncation:** IDs and endpoints may wrap; full exact values are available in detail expansion. Do not rely on hover for access.
@@ -93,7 +96,7 @@
 
 ## Async and resilience
 
-- **Mutations:** Pessimistic acknowledgement; duplicate submission blocked per alert.
+- **Mutations:** Pessimistic acknowledgement and account-status changes; duplicate submission blocked for the affected record. Account creation clears the password field after success.
 - **Offline/read-stale/write:** Existing response can remain visible and is marked stale after a failed refresh; actions remain available only when online and permitted.
 - **Retry/backoff:** User-triggered retry for REST failures. WebSocket uses bounded exponential reconnect; reconnect resumes from last received `(created_at, id)` cursor.
 - **Session:** Access and rotated refresh tokens live in memory only; page reload requires sign-in. Refresh before access expiry and on REST 401/WS 4401. Failed refresh clears session and returns to sign-in.
@@ -109,6 +112,7 @@
 ## Permission and clipboard
 
 - Viewer acknowledgement action is disabled and paired with visible text explaining that analyst/admin permission is required. The API enforces role checks.
+- User management navigation is shown only for administrators. The API enforces admin-only listing and mutations, prevents self-deactivation and last-active-admin lockout, and audits status changes without credentials.
 - No clipboard action in Step 8.
 
 ## Verification

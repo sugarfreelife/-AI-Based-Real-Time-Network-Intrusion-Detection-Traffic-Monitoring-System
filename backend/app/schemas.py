@@ -220,6 +220,10 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+
 ItemType = TypeVar("ItemType")
 
 

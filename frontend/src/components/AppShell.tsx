@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, Cpu, LayoutDashboard, LogOut, RadioTower, Waves } from 'lucide-react'
+import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, Cpu, LayoutDashboard, LogOut, RadioTower, UsersRound, Waves } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -133,8 +133,10 @@ export function AppShell() {
       ? 'Alerts'
       : location.pathname.startsWith('/flows')
         ? 'Flows'
-          : location.pathname.startsWith('/model')
-            ? 'Model & evaluation'
+        : location.pathname.startsWith('/model')
+          ? 'Model & evaluation'
+          : location.pathname.startsWith('/users')
+            ? 'User management'
             : 'Overview'
 
   return (
@@ -163,6 +165,9 @@ export function AppShell() {
             <NavLink to="/flows" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <Waves size={17} strokeWidth={1.8} /><span>Flows</span><ArrowRight className="nav-arrow" size={14} />
             </NavLink>
+            {user?.role === 'admin' && <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <UsersRound size={17} strokeWidth={1.8} /><span>User management</span><ArrowRight className="nav-arrow" size={14} />
+            </NavLink>}
           </nav>
 
           <div className="rail-spacer" />
@@ -193,6 +198,7 @@ export function AppShell() {
             <NavLink to="/model" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Cpu size={15} />Model</NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Bell size={16} />Alerts</NavLink>
             <NavLink to="/flows" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Waves size={16} />Flows</NavLink>
+            {user?.role === 'admin' && <NavLink to="/users" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><UsersRound size={15} />Users</NavLink>}
           </nav>
         </div>
 

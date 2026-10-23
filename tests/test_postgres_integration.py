@@ -13,7 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.config import Settings
-from backend.app.database.models import AlertDB, AuditEventDB, CaptureRunDB, FlowRecordDB, UserDB
+from backend.app.database.models import AlertDB, AuditEventDB, CaptureRunDB, FlowRecordDB, RefreshSessionDB, UserDB
 from backend.app.database.session import make_engine
 from backend.app.main import create_app
 from backend.app.security import hash_password
@@ -223,4 +223,102 @@ def test_postgres_auth_persistence_acknowledgement_and_websocket() -> None:
                 session.execute(delete(AuditEventDB).where(AuditEventDB.actor_user_id == user_id))
                 session.execute(delete(AuditEventDB).where(AuditEventDB.target_id == user_id))
                 session.execute(delete(UserDB).where(UserDB.id == user_id))
+        engine.dispose()
+
+
+def test_postgres_admin_user_status_protection_and_session_revocation() -> None:
+    database_url = _enabled_test_database()
+    engine = make_engine(database_url)
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    suffix = uuid4().hex[:12]
+    admin_username = f"pg-admin-{suffix}"
+    analyst_username = f"pg-analyst-{suffix}"
+    backup_username = f"pg-backup-{suffix}"
+    admin_id: str | None = None
+    target_ids: list[str] = []
+
+    try:
+        with factory() as session:
+            admin = UserDB(username=admin_username, password_hash=hash_password(TEST_PASSWORD), role="admin")
+            session.add(admin)
+            session.commit()
+            admin_id = admin.id
+
+        app = create_app(factory, Settings(database_url=database_url, jwt_secret_key=TEST_JWT_SECRET))
+        with TestClient(app) as admin_client:
+            login = admin_client.post(
+                "/api/v1/auth/token", json={"username": admin_username, "password": TEST_PASSWORD}
+            )
+            assert login.status_code == 200
+            tokens = login.json()
+            admin_client.headers.update({"Authorization": f"Bearer {tokens['access_token']}"})
+
+            analyst_create = admin_client.post(
+                "/api/v1/auth/users",
+                json={"username": analyst_username, "password": TEST_PASSWORD, "role": "analyst"},
+            )
+            backup_create = admin_client.post(
+                "/api/v1/auth/users",
+                json={"username": backup_username, "password": TEST_PASSWORD, "role": "admin"},
+            )
+            assert analyst_create.status_code == backup_create.status_code == 201
+            analyst_id = analyst_create.json()["id"]
+            backup_id = backup_create.json()["id"]
+            target_ids = [analyst_id, backup_id]
+
+            listing = admin_client.get("/api/v1/auth/users", params={"limit": 2, "offset": 0})
+            assert listing.status_code == 200
+            assert listing.json()["total"] == 3
+            assert len(listing.json()["items"]) == 2
+            assert all("password_hash" not in item for item in listing.json()["items"])
+
+            analyst_client = TestClient(app)
+            analyst_login = analyst_client.post(
+                "/api/v1/auth/token", json={"username": analyst_username, "password": TEST_PASSWORD}
+            )
+            assert analyst_login.status_code == 200
+            analyst_tokens = analyst_login.json()
+            analyst_client.headers.update({"Authorization": f"Bearer {analyst_tokens['access_token']}"})
+
+            disabled = admin_client.patch(
+                f"/api/v1/auth/users/{analyst_id}/status", json={"is_active": False}
+            )
+            assert disabled.status_code == 200 and disabled.json()["is_active"] is False
+            assert analyst_client.get("/api/v1/auth/me").status_code == 401
+            assert analyst_client.post(
+                "/api/v1/auth/refresh", json={"refresh_token": analyst_tokens["refresh_token"]}
+            ).status_code == 401
+
+            enabled = admin_client.patch(
+                f"/api/v1/auth/users/{analyst_id}/status", json={"is_active": True}
+            )
+            assert enabled.status_code == 200 and enabled.json()["is_active"] is True
+            assert admin_client.patch(
+                f"/api/v1/auth/users/{backup_id}/status", json={"is_active": False}
+            ).status_code == 200
+            assert admin_client.patch(
+                f"/api/v1/auth/users/{admin_id}/status", json={"is_active": False}
+            ).status_code == 409
+
+            with factory() as session:
+                active_admins = session.query(UserDB).filter(UserDB.role == "admin", UserDB.is_active.is_(True)).count()
+                events = session.query(AuditEventDB).filter(
+                    AuditEventDB.event_type == "auth.user_status_changed",
+                    AuditEventDB.target_id.in_([analyst_id, backup_id]),
+                ).all()
+                assert active_admins == 1
+                assert len(events) == 3
+                assert all("password" not in event.details for event in events)
+    finally:
+        with factory.begin() as session:
+            if admin_id is not None:
+                session.execute(delete(RefreshSessionDB).where(RefreshSessionDB.user_id.in_([admin_id, *target_ids])))
+                session.execute(delete(AuditEventDB).where(
+                    AuditEventDB.actor_user_id == admin_id,
+                ))
+            if target_ids:
+                session.execute(delete(AuditEventDB).where(AuditEventDB.target_id.in_(target_ids)))
+                session.execute(delete(UserDB).where(UserDB.id.in_(target_ids)))
+            if admin_id is not None:
+                session.execute(delete(UserDB).where(UserDB.id == admin_id))
         engine.dispose()

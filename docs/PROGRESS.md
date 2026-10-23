@@ -419,7 +419,7 @@ Step 17 adds truthful model availability and actual evaluation-report views.
 
 ## Step 17 of 20 — Model status and evaluation view
 
-**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+**Status:** Implemented and verified; committed as `0170573` and pushed to `origin/main`.
 
 ### Delivered
 
@@ -443,3 +443,28 @@ Step 17 adds truthful model availability and actual evaluation-report views.
 ### Next task
 
 Step 18 adds admin-only user listing and safe activation changes with audit records.
+
+## Step 18 of 20 — Administrator user management
+
+**Status:** Implemented and verified; ready for its individual GitHub checkpoint.
+
+### Delivered
+
+- Added an admin-only paginated user register and account status endpoint. The API returns only public account fields and enforces roles on the server.
+- Added self-deactivation rejection and PostgreSQL transaction-level advisory locking around administrator deactivation checks, so concurrent requests cannot remove the last active administrator.
+- Deactivation blocks REST access immediately and revokes every active refresh session. Status changes are recorded in the audit log without credentials.
+- Added the administrator-only dashboard route, responsive account register, account creation form, activation controls, URL-backed pagination, validation, and accessible inline success/error states. The account form clears the password after successful creation.
+- Updated the API/role documentation, design and UX contracts, README, architecture, limitations, and verification record. No schema migration was needed.
+
+### Verification
+
+- SQLite backend suite: PASS, 24 tests, including account listing, role denial, activation, audit privacy, refresh revocation, and last-admin protection.
+- Disposable PostgreSQL integration: PASS, 2 integration tests, including PostgreSQL account activation, audit, session revocation, and last-admin protection. The isolated `nids-step18` database volume and containers were removed.
+- Frontend suite: PASS, 15 tests across 3 files, including account list, activation, account creation, password clearing, and permission failure.
+- `npm run build` (includes TypeScript build): PASS. The 709.18 kB main bundle remains above the 500 kB warning threshold; Step 20 includes code splitting.
+- Compose configuration validation: PASS.
+- Python host runtime remains unavailable; backend tests ran in the project container with the workspace mounted read-only. Its only warning was an expected inability to write pytest cache into the read-only mount.
+
+### Next task
+
+Step 19 adds bounded login abuse controls with configurable limits and safe client-address handling.

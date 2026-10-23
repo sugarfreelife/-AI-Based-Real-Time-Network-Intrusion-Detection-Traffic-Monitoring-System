@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from scapy.layers.inet import IP, TCP
 from scapy.utils import wrpcap
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -620,6 +620,84 @@ def test_admin_user_creation_and_role_protected_alert_acknowledgement(session_fa
         denied = session.scalar(select(AuditEventDB).where(AuditEventDB.event_type == "auth.authorization_denied"))
         assert denied is not None and denied.actor_user_id is not None
         assert session.get(FlowRecordDB, flow_record_id) is not None
+
+
+def test_admin_user_listing_activation_audit_and_last_admin_protection(session_factory) -> None:
+    admin_client, _admin_tokens = _authenticated_client(session_factory, role="admin")
+    analyst_password = "a-long-analyst-test-password"
+    analyst = admin_client.post(
+        "/api/v1/auth/users",
+        json={"username": "analyst.managed", "password": analyst_password, "role": "analyst"},
+    ).json()
+    backup_admin = admin_client.post(
+        "/api/v1/auth/users",
+        json={"username": "backup.admin", "password": "a-long-backup-admin-password", "role": "admin"},
+    ).json()
+
+    page = admin_client.get("/api/v1/auth/users", params={"limit": 2, "offset": 0})
+    assert page.status_code == 200
+    assert page.json()["total"] == 3
+    assert len(page.json()["items"]) == 2
+    assert all("password_hash" not in item for item in page.json()["items"])
+    assert admin_client.get("/api/v1/auth/users", params={"limit": 101}).status_code == 422
+    assert admin_client.get("/api/v1/auth/users", params={"offset": -1}).status_code == 422
+
+    viewer_client, _ = _authenticated_client(session_factory, role="viewer")
+    assert viewer_client.get("/api/v1/auth/users").status_code == 403
+    assert viewer_client.patch(
+        f"/api/v1/auth/users/{analyst['id']}/status", json={"is_active": False}
+    ).status_code == 403
+
+    analyst_client = TestClient(create_app(session_factory, TEST_SETTINGS))
+    analyst_tokens = analyst_client.post(
+        "/api/v1/auth/token", json={"username": "analyst.managed", "password": analyst_password}
+    ).json()
+    analyst_client.headers.update({"Authorization": f"Bearer {analyst_tokens['access_token']}"})
+    disabled = admin_client.patch(
+        f"/api/v1/auth/users/{analyst['id']}/status", json={"is_active": False}
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["is_active"] is False
+    assert analyst_client.get("/api/v1/auth/me").status_code == 401
+    assert analyst_client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": analyst_tokens["refresh_token"]}
+    ).status_code == 401
+
+    enabled = admin_client.patch(
+        f"/api/v1/auth/users/{analyst['id']}/status", json={"is_active": True}
+    )
+    assert enabled.status_code == 200
+    assert enabled.json()["is_active"] is True
+    assert admin_client.patch(
+        f"/api/v1/auth/users/{backup_admin['id']}/status", json={"is_active": False}
+    ).status_code == 200
+    assert admin_client.patch(
+        f"/api/v1/auth/users/{admin_client.get('/api/v1/auth/me').json()['id']}/status",
+        json={"is_active": False},
+    ).status_code == 409
+    assert admin_client.patch(
+        "/api/v1/auth/users/not-a-user/status", json={"is_active": True}
+    ).status_code == 404
+    assert admin_client.patch(
+        f"/api/v1/auth/users/{analyst['id']}/status", json={"is_active": "not-a-boolean"}
+    ).status_code == 422
+
+    with session_factory() as session:
+        analyst_row = session.get(UserDB, analyst["id"])
+        assert analyst_row is not None and analyst_row.is_active
+        active_admins = session.scalar(
+            select(func.count()).select_from(UserDB).where(UserDB.role == "admin", UserDB.is_active.is_(True))
+        )
+        assert active_admins == 1
+        events = session.scalars(
+            select(AuditEventDB).where(AuditEventDB.event_type == "auth.user_status_changed")
+        ).all()
+        assert len(events) == 3
+        assert all("password" not in event.details for event in events)
+        revoked = session.scalars(
+            select(RefreshSessionDB).where(RefreshSessionDB.user_id == analyst["id"])
+        ).all()
+        assert revoked and all(item.revoked_at is not None for item in revoked)
 
 
 def test_initial_admin_command_creates_an_argon2id_user(session_factory, monkeypatch, capsys) -> None:

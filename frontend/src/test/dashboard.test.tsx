@@ -5,10 +5,14 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CaptureHistoryPage } from '../pages/CaptureHistoryPage'
 import { ModelPage } from '../pages/ModelPage'
 import { OverviewPage } from '../pages/OverviewPage'
+import { UserManagementPage } from '../pages/UserManagementPage'
 
-const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }))
+const { requestMock, authUserMock } = vi.hoisted(() => ({
+  requestMock: vi.fn(),
+  authUserMock: { id: 'admin-1', username: 'admin', role: 'admin', is_active: true, created_at: '2026-10-01T00:00:00Z' },
+}))
 
-vi.mock('../auth/AuthProvider', () => ({ useAuth: () => ({ request: requestMock }) }))
+vi.mock('../auth/AuthProvider', () => ({ useAuth: () => ({ user: authUserMock, request: requestMock }) }))
 vi.mock('../components/TrafficTimelineChart', () => ({ TrafficTimelineChart: () => <div role="img" aria-label="Persisted activity chart" /> }))
 
 const summary = {
@@ -66,6 +70,7 @@ function renderPage(path: string, element: React.ReactNode) {
     <Route path="/overview" element={<>{element}<LocationProbe /></>} />
     <Route path="/history" element={<>{element}<LocationProbe /></>} />
     <Route path="/model" element={<>{element}<LocationProbe /></>} />
+    <Route path="/users" element={<>{element}<LocationProbe /></>} />
   </Routes></MemoryRouter>)
 }
 
@@ -215,5 +220,60 @@ describe('overview and capture history dashboard', () => {
     expect(screen.getByText(/to a trusted project model and restart the API/)).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Held-out evaluation metrics' })).not.toBeInTheDocument()
     expect(screen.getByText(/unavailable until a configured model passes verification/)).toBeInTheDocument()
+  })
+
+  it('lists accounts and updates their active status through the admin API', async () => {
+    const analyst = { id: 'analyst-1', username: 'analyst.one', role: 'analyst', is_active: true, created_at: '2026-10-22T12:00:00Z' }
+    requestMock.mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith('/api/v1/auth/users?')) return { items: [analyst], total: 1, limit: 25, offset: 0 }
+      if (path.endsWith('/status')) return { ...analyst, is_active: JSON.parse(String(options?.body)).is_active }
+      throw new Error(`Unexpected request: ${path}`)
+    })
+    const user = userEvent.setup()
+    renderPage('/users?limit=25&offset=0', <UserManagementPage />)
+
+    expect((await screen.findAllByText('analyst.one')).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Active').length).toBeGreaterThanOrEqual(1)
+    await user.click(screen.getAllByRole('button', { name: 'Deactivate analyst.one' })[0]!)
+
+    await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThanOrEqual(1))
+    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/users/analyst-1/status', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: false }),
+    }))
+    expect(await screen.findByText('analyst.one is now inactive.')).toBeInTheDocument()
+  })
+
+  it('creates an account, clears the temporary password, and reloads the account list', async () => {
+    const analyst = { id: 'analyst-1', username: 'analyst.one', role: 'analyst', is_active: true, created_at: '2026-10-22T12:00:00Z' }
+    requestMock.mockImplementation(async (path: string, options?: RequestInit) => {
+      if (path.startsWith('/api/v1/auth/users?')) return { items: [analyst], total: 1, limit: 25, offset: 0 }
+      if (path === '/api/v1/auth/users' && options?.method === 'POST') return analyst
+      throw new Error(`Unexpected request: ${path}`)
+    })
+    const user = userEvent.setup()
+    renderPage('/users?limit=25&offset=0', <UserManagementPage />)
+
+    await screen.findAllByText('analyst.one')
+    await user.type(screen.getByLabelText('Username'), 'new.operator')
+    await user.type(screen.getByLabelText('Temporary password'), 'a-long-temporary-passphrase')
+    await user.selectOptions(screen.getByLabelText('Role'), 'viewer')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(await screen.findByText('Account new.operator was created and is active.')).toBeInTheDocument()
+    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/users', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ username: 'new.operator', password: 'a-long-temporary-passphrase', role: 'viewer' }),
+    }))
+    expect(screen.getByLabelText('Temporary password')).toHaveValue('')
+  })
+
+  it('shows the API permission error when a non-admin cannot load the register', async () => {
+    authUserMock.role = 'viewer'
+    requestMock.mockRejectedValue(new Error('Your account does not have permission for this action.'))
+    renderPage('/users?limit=25&offset=0', <UserManagementPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your account does not have permission for this action.')
+    authUserMock.role = 'admin'
   })
 })

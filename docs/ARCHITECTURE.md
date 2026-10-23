@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–17 are complete and individually pushed to GitHub; Steps 18–20 remain. Packet ingestion, flow building, shared features, dataset/training tools, optional model inference, explainable alerts, SQLAlchemy persistence, Alembic migrations, authenticated REST APIs, role checks, audit records, authenticated alert delivery, a React dashboard, and local Compose deployment are implemented. On 2026-10-22, the Compose images built successfully, PostgreSQL reached healthy status, the API applied migrations through `0002_authentication`, and the dashboard and readiness endpoint returned HTTP 200. The dashboard includes real-data overview/history views and configured model/evaluation reporting. Real-data model evaluation and live capture remain unavailable or unverified.
+Steps 1–18 are implemented and verified; Steps 19–20 remain. Packet ingestion, flow building, shared features, dataset/training tools, optional model inference, explainable alerts, SQLAlchemy persistence, Alembic migrations, authenticated REST APIs, role checks, audit records, authenticated alert delivery, a React dashboard, and local Compose deployment are implemented. The dashboard includes real-data overview/history views, configured model/evaluation reporting, and an administrator-only account register with status audit and last-admin protection. PostgreSQL user-management behavior was verified in a disposable test database. Real-data model evaluation and live capture remain unavailable or unverified.
 
 ## Target data flow
 

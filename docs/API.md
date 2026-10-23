@@ -44,7 +44,9 @@ The monitor creates a new `capture_id` per run. Supply `--capture-id <uuid>` to 
 | `POST /api/v1/auth/refresh` | Rotate a refresh token and return a new token pair. |
 | `POST /api/v1/auth/logout` | Revoke the supplied refresh token; returns 204. |
 | `GET /api/v1/auth/me` | Return the authenticated user and current role. |
+| `GET /api/v1/auth/users` | Return a paginated, newest-first user register; administrator only. Accepts `limit` (1–100) and `offset` (0 or greater). |
 | `POST /api/v1/auth/users` | Create a user; administrator only. |
+| `PATCH /api/v1/auth/users/{user_id}/status` | Activate or deactivate an account; administrator only. Body: `{"is_active":false}`. |
 | `PATCH /api/v1/alerts/{id}/acknowledge` | Acknowledge an alert; analyst or administrator only. |
 | `WS /api/v1/ws/alerts` | Stream newly persisted alerts to authenticated clients. |
 
@@ -62,7 +64,7 @@ GET http://127.0.0.1:8000/api/v1/analytics/timeline?bucket=hour&since=2026-10-22
 GET http://127.0.0.1:8000/api/v1/model/status
 ```
 
-Unknown records return 404. Invalid pagination, protocol, severity, status, or time ranges return 422. Database readiness returns 503 when the database cannot execute a simple query. Responses contain persisted observations only; the API does not create demo records or metrics.
+Unknown records return 404. Invalid pagination, protocol, severity, status, or time ranges return 422. Self-deactivation and attempts to deactivate the last active administrator return 409. Database readiness returns 503 when the database cannot execute a simple query. Responses contain persisted observations only; the API does not create demo records or metrics.
 
 ## Authentication and roles
 
@@ -72,19 +74,19 @@ Run `python -m backend.app.auth_admin --username admin` after applying migration
 {"username":"analyst.one","password":"a-long-unique-passphrase","role":"analyst"}
 ```
 
-Passwords are hashed with Argon2id through `pwdlib`. Usernames are normalized to lowercase and are unique. Passwords must be 12–128 characters. The role matrix is:
+Passwords are hashed with Argon2id through `pwdlib`. Usernames are normalized to lowercase and are unique. Passwords must be 12–128 characters. The user register returns public account fields only and is paginated newest first. Status changes are audited without credentials; deactivation revokes all refresh sessions, and inactive users fail REST authentication immediately. An administrator cannot deactivate their own account, and PostgreSQL serializes administrator deactivation checks so the last active administrator cannot be removed, even by concurrent requests. The role matrix is:
 
-| Role | Read capture, flow, alert, analytics, and model status | Receive alert stream | Acknowledge alerts | Create users |
-|---|---:|---:|---:|---:|
-| viewer | Yes | Yes | No | No |
-| analyst | Yes | Yes | Yes | No |
-| admin | Yes | Yes | Yes | Yes |
+| Role | Read capture, flow, alert, analytics, and model status | Receive alert stream | Acknowledge alerts | List users | Create users | Change account status |
+|---|---:|---:|---:|---:|---:|---:|
+| viewer | Yes | Yes | No | No | No | No |
+| analyst | Yes | Yes | Yes | No | No | No |
+| admin | Yes | Yes | Yes | Yes | Yes | Yes |
 
 Send the access token on REST requests as `Authorization: Bearer <access_token>`. Login accepts JSON such as `{"username":"admin","password":"..."}`. The response contains `access_token`, `refresh_token`, `token_type`, and `expires_in`. Keep the refresh token in a protected client store, rotate it through `/auth/refresh`, and discard the old value after a successful rotation. Reuse of a rotated token revokes all active refresh sessions for that account. Logout revokes the supplied refresh session; an already issued access token remains valid for up to 15 minutes.
 
 `JWT_SECRET_KEY` is mandatory for login and must contain at least 32 UTF-8 bytes. Access and refresh JWTs use HS256 with explicit issuer, audience, required claims, and token-type checks. User role and active status are loaded from the database on each REST request, so permission changes take effect without waiting for token expiry. Health endpoints remain public. All other REST data routes require a bearer token.
 
-Successful and failed login, refresh, logout, bootstrap/user creation, role denials, refresh-token reuse, and alert acknowledgement are recorded in `audit_events`. Passwords, access tokens, refresh tokens, and password hashes are not stored in audit details.
+Successful and failed login, refresh, logout, bootstrap/user creation, account status changes, role denials, refresh-token reuse, and alert acknowledgement are recorded in `audit_events`. Passwords, access tokens, refresh tokens, and password hashes are not stored in audit details.
 
 ## Alert WebSocket
 

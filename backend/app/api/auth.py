@@ -6,16 +6,16 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.database.models import AuditEventDB, RefreshSessionDB, UserDB
 from backend.app.database.session import get_session
 from backend.app.config import Settings
-from backend.app.schemas import LoginRequest, RefreshRequest, TokenPair, UserCreate, UserRead
+from backend.app.schemas import LoginRequest, Page, RefreshRequest, TokenPair, UserCreate, UserRead, UserStatusUpdate
 from backend.app.security import (
     DUMMY_PASSWORD_HASH,
     TOKEN_TYPE_ACCESS,
@@ -236,6 +236,20 @@ def me(user: Annotated[UserDB, Depends(get_current_user)]) -> UserDB:
     return user
 
 
+@auth_router.get("/users", response_model=Page[UserRead])
+def list_users(
+    session: Annotated[Session, Depends(get_session)],
+    _actor: Annotated[UserDB, Depends(require_roles("admin"))],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Page[UserRead]:
+    total = int(session.scalar(select(func.count()).select_from(UserDB)) or 0)
+    users = session.scalars(
+        select(UserDB).order_by(UserDB.created_at.desc(), UserDB.username, UserDB.id).offset(offset).limit(limit)
+    ).all()
+    return Page[UserRead](items=users, total=total, limit=limit, offset=offset)
+
+
 @auth_router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(
     payload: UserCreate,
@@ -263,3 +277,55 @@ def create_user(
         session.rollback()
         raise HTTPException(status_code=409, detail="username already exists") from None
     return user
+
+
+@auth_router.patch("/users/{user_id}/status", response_model=UserRead)
+def update_user_status(
+    user_id: str,
+    payload: UserStatusUpdate,
+    session: Annotated[Session, Depends(get_session)],
+    actor: Annotated[UserDB, Depends(require_roles("admin"))],
+) -> UserDB:
+    target = session.get(UserDB, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="user not found")
+    if target.is_active == payload.is_active:
+        return target
+    if actor.id == target.id and not payload.is_active:
+        raise HTTPException(status_code=409, detail="you cannot deactivate your own account")
+
+    if target.role == "admin" and target.is_active and not payload.is_active:
+        if session.get_bind().dialect.name == "postgresql":
+            # Serialize administrator deactivations so two requests cannot both remove the last admins.
+            session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": 0x4E494453})
+            target = session.scalar(
+                select(UserDB).where(UserDB.id == user_id).with_for_update().execution_options(populate_existing=True)
+            )
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not target.is_active:
+                return target
+        active_admins = int(session.scalar(
+            select(func.count()).select_from(UserDB).where(UserDB.role == "admin", UserDB.is_active.is_(True))
+        ) or 0)
+        if active_admins <= 1:
+            raise HTTPException(status_code=409, detail="the last active administrator cannot be deactivated")
+
+    target.is_active = payload.is_active
+    now = datetime.now(UTC)
+    if not payload.is_active:
+        session.execute(
+            update(RefreshSessionDB)
+            .where(RefreshSessionDB.user_id == target.id, RefreshSessionDB.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+    _audit(
+        session,
+        "auth.user_status_changed",
+        actor_user_id=actor.id,
+        target_type="user",
+        target_id=target.id,
+        details={"is_active": target.is_active, "role": target.role},
+    )
+    session.commit()
+    return target
