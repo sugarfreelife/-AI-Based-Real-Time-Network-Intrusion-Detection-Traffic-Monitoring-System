@@ -22,10 +22,57 @@ from backend.app.schemas import (
     ModelStatusRead,
     Page,
 )
+from nids_engine.detection import AlertEngine
+from nids_engine.flows import FlowBuilder
+from nids_engine.inference import InferenceEngine
+from nids_engine.packet import parse_packet
+from scapy.layers.inet import IP, TCP
 
 router = APIRouter(prefix="/api/v1")
 
 CaptureStatus = Literal["running", "completed", "partial", "failed"]
+
+
+@router.post("/simulation")
+def run_synthetic_simulation(
+    _user: Annotated[UserDB, Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Run a bounded, isolated SYN-burst demonstration through the real pipeline."""
+    builder = FlowBuilder()
+    base_timestamp = datetime(2026, 1, 1, tzinfo=UTC).timestamp()
+    packet_count = 24
+    for index in range(packet_count):
+        packet = IP(src="192.0.2.10", dst="198.51.100.20") / TCP(sport=49152, dport=443, flags="S")
+        packet.time = base_timestamp + index * 0.05
+        builder.process(parse_packet(packet))
+    flows = builder.flush()
+    inference = InferenceEngine.from_path(None)
+    detector = AlertEngine(syn_burst_threshold=20)
+    results = []
+    for flow in flows:
+        prediction = inference.predict(flow)
+        alerts = detector.evaluate(flow, prediction)
+        results.append({
+            "flow_id": flow.flow_id,
+            "protocol": flow.protocol,
+            "source": {"ip": flow.endpoint_a.ip, "port": flow.endpoint_a.port},
+            "destination": {"ip": flow.endpoint_b.ip, "port": flow.endpoint_b.port},
+            "packets": flow.total_packets,
+            "bytes": flow.total_bytes,
+            "syn_count": flow.tcp_syn_count,
+            "feature_schema": prediction.feature_schema_version,
+            "prediction_status": prediction.status,
+            "prediction_reason": prediction.reason,
+            "alerts": [alert.as_dict() for alert in alerts],
+        })
+    return {
+        "mode": "synthetic",
+        "persisted": False,
+        "packet_count": packet_count,
+        "flow_count": len(flows),
+        "flows": results,
+        "stages": ["packet_parse", "flow_aggregation", "feature_extraction", "model_status", "rule_detection"],
+    }
 
 
 @router.get("/model/status", response_model=ModelStatusRead)

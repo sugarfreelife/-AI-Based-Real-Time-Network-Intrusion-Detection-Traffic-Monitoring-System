@@ -5,6 +5,7 @@ This file is a short orientation for the person or coding agent who continues th
 ## Current situation
 
 - All planned implementation work through Step 20 is complete.
+- Step 21 adds the graphite/brass dashboard and authenticated `/simulation` page. The bounded server-side demo sends 24 synthetic TCP SYN packets through the real parser, flow builder, inference availability check, and alert rules; it produces one `tcp_syn_burst` alert at threshold 20 and does not persist records.
 - Git branch: `main`. The last implementation commit is `388ae15`; at the start of this report task the branch was clean and synced with `origin/main`.
 - Local Compose stack: `nids-local`. PostgreSQL, API, and dashboard started successfully and reported healthy.
 - Dashboard: <http://localhost:8080>. The user's current browser route is `/alerts`.

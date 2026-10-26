@@ -515,3 +515,23 @@ Step 20 measured controlled replay performance, improved bundle loading, establi
 ### Completion boundary
 
 All planned software steps are complete. First administrator provisioning, real data/model evaluation, live capture setup, and public-deployment security work remain operator/data-dependent actions outside the 20-step implementation.
+
+## Step 21 — Dark dashboard and synthetic pipeline visualization
+
+**Status:** Implemented; local type-check/build and API pipeline smoke check passed. This is a user-requested extension after the original 20-step plan.
+
+### Delivered
+
+- Replaced the light dashboard palette with a graphite/brass theme and updated `DESIGN.md` and `UX-CONTRACT.md`.
+- Added authenticated `POST /api/v1/simulation`. It generates 24 deterministic TCP SYN packets on documentation-only IP addresses and routes them through the project's real packet parser, `FlowBuilder`, model availability state, and `AlertEngine`.
+- Added `/simulation` with an animated five-stage pipeline and flow/alert evidence. The endpoint is bounded and does not persist demo records.
+- Updated project architecture and context documentation. Added the extended report and editable implementation presentation as project deliverables.
+
+### Verification
+
+- `npm run typecheck`: PASS.
+- `npm run build`: PASS; simulation page chunk 7.64 kB (2.62 kB gzip).
+- `docker compose up --build --detach --wait`: PASS; PostgreSQL, API and dashboard reported healthy.
+- Direct API pipeline smoke check: PASS; 24 packets, 1 flow, `tcp_syn_burst`, evidence 24 SYN / threshold 20, `persisted=false`.
+- Browser review: PASS; signed-in simulation screen showed the completed synthetic pipeline and alert. Report screenshots are explicitly labeled renderings reconstructed from the implemented UI; browser captures were shown in the task conversation.
+- No real dataset, model, or live capture was introduced. The simulation is not evidence of real-world detection quality.

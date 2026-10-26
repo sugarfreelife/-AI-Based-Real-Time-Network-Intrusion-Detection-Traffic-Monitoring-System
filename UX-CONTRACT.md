@@ -34,6 +34,7 @@
 |---|---|---|---|---|
 | Read-only tables and filters | Shared `DataTable`/`FilterBar` patterns in dashboard | API list endpoints and URL search params | Desktop table / narrow record cards | Component tests and browser review |
 | Overview analytics | `OverviewPage` with `TrafficTimelineChart` | `/analytics/summary` and `/analytics/timeline` | Hourly / daily buckets; UTC API values / browser-local labels | Range round-trip, empty data, responsive chart and accessible value table |
+| Synthetic simulation | `SimulationPage` and authenticated `POST /simulation` | Real packet parser, flow builder, inference status and rule detector; no DB write | Fixed, bounded SYN burst on documentation IPs; explicitly synthetic | Auth required, rule evidence displayed, no persistence, reduced-motion support |
 | Model status and evaluation | `ModelPage` | `/model/status`, configured trusted artifact, matching evaluation report | Explicit unavailable states; verified report only | No-model state, checksum/report mismatch, accessible per-class and confusion tables |
 | User management | `UserManagementPage` | `/auth/users`, `/auth/users/{id}/status`; server-side admin role, audit trail, refresh-session revocation | Admin-only register and account create/status actions; desktop table / phone cards | Role denial, create validation, successful deactivation, pagination, own-account protection |
 | Select/Listbox | Native `<select>` | Browser platform, API enum values | Native only | Keyboard review and narrow layout |
@@ -80,9 +81,9 @@
 
 ## Navigation and responsive behavior
 
-- **Route titles:** `Overview`, `Capture history`, `Model & evaluation`, `Alerts`, `Flows`, `User management` (admin only), and `Sign in · Network observatory`.
+- **Route titles:** `Overview`, `Simulation`, `Capture history`, `Model & evaluation`, `Alerts`, `Flows`, `User management` (admin only), and `Sign in · Network observatory`.
 - **Route errors / 403:** Missing session returns to sign-in with a safe same-origin return path. A 403 keeps the page visible and explains that the account cannot perform that action.
-- **Route-state:** Overview, Capture history, Model & evaluation, Alerts, and Flows are primary links; User management is added for administrators. Date ranges, timeline interval, filters, and pagination are query state.
+- **Route-state:** Overview, Simulation, Capture history, Model & evaluation, Alerts, and Flows are primary links; User management is added for administrators. Date ranges, timeline interval, filters, and pagination are query state.
 - **Navigation transformation:** Fixed left rail on wide screens; compact horizontal nav above content on narrow screens.
 - **Responsive tables:** Desktop semantic table; below 760px show equivalent record cards with all fields and actions.
 - **Truncation:** IDs and endpoints may wrap; full exact values are available in detail expansion. Do not rely on hover for access.
@@ -118,7 +119,7 @@
 ## Verification
 
 - **Static commands:** `npm run typecheck`, `npm test`, `npm run build`, premium UI `audit_project.py --mode strict`.
-- **Browser/device/theme:** Chromium/desktop and narrow phone width; light theme only.
+- **Browser/device/theme:** Chromium/desktop and narrow phone width; graphite and brass dark theme.
 - **Accessibility:** Keyboard through sign-in, navigation, filters, chart interval, tables, disclosures, and acknowledgement; inspect focus and reduced motion. Overview charts include an accessible name and a text table of bucket values.
 - **Sibling flow:** Alerts and flows establish the shared table pattern; Overview and Capture history extend it with aggregate and run-level evidence.
 - **Evidence:** Results are recorded in `docs/PROGRESS.md`; no test data is shown as production telemetry.

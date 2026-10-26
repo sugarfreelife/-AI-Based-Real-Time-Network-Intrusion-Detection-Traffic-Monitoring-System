@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, Cpu, LayoutDashboard, LogOut, RadioTower, UsersRound, Waves } from 'lucide-react'
+import { Activity, ArrowRight, Bell, CalendarDays, CircleDot, Cpu, FlaskConical, LayoutDashboard, LogOut, RadioTower, UsersRound, Waves } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -135,7 +135,9 @@ export function AppShell() {
         ? 'Flows'
         : location.pathname.startsWith('/model')
           ? 'Model & evaluation'
-          : location.pathname.startsWith('/users')
+          : location.pathname.startsWith('/simulation')
+            ? 'Simulation'
+            : location.pathname.startsWith('/users')
             ? 'User management'
             : 'Overview'
 
@@ -152,6 +154,9 @@ export function AppShell() {
           <nav className="primary-nav">
             <NavLink to="/overview" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <LayoutDashboard size={17} strokeWidth={1.8} /><span>Overview</span><ArrowRight className="nav-arrow" size={14} />
+            </NavLink>
+            <NavLink to="/simulation" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <FlaskConical size={17} strokeWidth={1.8} /><span>Simulation</span><ArrowRight className="nav-arrow" size={14} />
             </NavLink>
             <NavLink to="/history" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <CalendarDays size={17} strokeWidth={1.8} /><span>Capture history</span><ArrowRight className="nav-arrow" size={14} />
@@ -194,6 +199,7 @@ export function AppShell() {
           <button className="text-button mobile-signout" type="button" onClick={() => void handleLogout()} disabled={loggingOut}>Sign out</button>
           <nav className="mobile-nav" aria-label="Main navigation">
             <NavLink to="/overview" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><LayoutDashboard size={15} />Overview</NavLink>
+            <NavLink to="/simulation" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><FlaskConical size={15} />Sim</NavLink>
             <NavLink to="/history" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><CalendarDays size={15} />History</NavLink>
             <NavLink to="/model" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Cpu size={15} />Model</NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `mobile-nav-link${isActive ? ' is-active' : ''}`}><Bell size={16} />Alerts</NavLink>

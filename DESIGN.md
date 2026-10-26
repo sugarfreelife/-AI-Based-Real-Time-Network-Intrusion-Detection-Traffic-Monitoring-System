@@ -101,9 +101,10 @@ The visual reference is a field engineer's well-kept paper log beside a calibrat
 - **Locale(s) and language policy:** English UI, using browser locale for date and time display. API timestamps remain timezone-aware ISO-8601 values.
 - **Usage scene:** Desktop-first investigation with dense tables, plus narrow-screen review on a phone. Prioritize scan speed and exact endpoint readability.
 - **Register:** Product interface on all routes, including login. No marketing surface.
-- **Memorable signature:** A thin packet-trace rule with one rust-colored event marker anchors the page header and active navigation.
-- **Restraint:** Keep navigation, filters, and tables familiar; avoid decorative noise, fabricated telemetry, and dashboard gauges without a real source.
-- **Anti-references:** Avoid black neon SOC dashboards, glowing maps, pseudo-live counters, and red/green-only states because they obscure the product's persisted evidence and role boundaries.
+- **Memorable signature:** A restrained brass trace marks the active navigation and links the five stages of the isolated packet-to-alert simulation.
+- **Restraint:** Graphite surfaces, warm white text, and brass interaction accents keep persisted evidence readable. Charts remain tied to API data; the simulation is explicitly synthetic and does not create persisted records.
+- **Anti-references:** Avoid neon SOC dashboards, glowing maps, unlabeled simulated counters, and red/green-only states because they obscure evidence and role boundaries.
+- **Palette:** Graphite canvas `#0d1215`, raised surface `#151c20`, muted surface `#20292d`, brass action `#d5ad5b`, warm ink `#f0eee6`, and muted text `#a6ada8`. Severity colors remain distinct and are paired with text labels.
 - **Token ownership/runtime mapping:** `frontend/src/styles.css` owns the runtime CSS values. Tailwind's `@theme inline` aliases those variables; this document mirrors the accepted values. Change CSS and this file together. `npm run typecheck` and `npm run build` are the current token drift gates; the premium UI audit is recorded in `docs/PROGRESS.md`.
 
 ## Colors

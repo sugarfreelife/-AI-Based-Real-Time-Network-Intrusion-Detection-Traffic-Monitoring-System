@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(({ LoginPage }) =>
 const ModelPage = lazy(() => import('./pages/ModelPage').then(({ ModelPage }) => ({ default: ModelPage })))
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage').then(({ UserManagementPage }) => ({ default: UserManagementPage })))
 const OverviewPage = lazy(() => import('./pages/OverviewPage').then(({ OverviewPage }) => ({ default: OverviewPage })))
+const SimulationPage = lazy(() => import('./pages/SimulationPage').then(({ SimulationPage }) => ({ default: SimulationPage })))
 
 function ProtectedShell() {
   const { user } = useAuth()
@@ -32,6 +33,7 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route path="/overview" element={<OverviewPage />} />
+        <Route path="/simulation" element={<SimulationPage />} />
         <Route path="/history" element={<CaptureHistoryPage />} />
         <Route path="/model" element={<ModelPage />} />
         <Route path="/users" element={<AdminOnlyUserManagement />} />
