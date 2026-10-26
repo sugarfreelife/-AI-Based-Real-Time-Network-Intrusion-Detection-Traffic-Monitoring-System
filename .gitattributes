@@ -1,0 +1,2 @@
+# Preserve generated PDF artifacts as binary files without line-ending conversion.
+*.pdf binary
