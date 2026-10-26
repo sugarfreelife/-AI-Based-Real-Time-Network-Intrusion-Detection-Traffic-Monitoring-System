@@ -80,7 +80,7 @@ Until the evidence above exists, describe this as a completed detection software
 
 ## GitHub status
 
-The project is on branch `main`, synced with the user-provided GitHub repository at final Step 20 commit `388ae15` (`feat(demo): add reproducible benchmark and final handoff`). Steps 18 and 19 were separately pushed as `d67a705` and `13d1326`.
+The original twenty-step implementation is on branch `main`, with Step 20 at `388ae15` (`feat(demo): add reproducible benchmark and final handoff`). The dark theme and simulation extension checkpoint was pushed as `082fa21`; this report and presentation are published in the following artifact checkpoint.
 
 ## Operating notes
 
@@ -97,3 +97,51 @@ The project is on branch `main`, synced with the user-provided GitHub repository
 - [Implementation progress](PROGRESS.md)
 - [Deployment instructions](DEPLOYMENT.md)
 - [Known limitations](KNOWN_LIMITATIONS.md)
+
+## Complete implementation, step by step
+
+The project is complete through twenty planned software steps. The table records their outputs, while verification and research evidence are reported separately.
+
+| Step | Implementation delivered |
+|---:|---|
+| 1 | Audited the empty workspace, captured requirements, established safe Git defaults, and created the initial checkpoint. |
+| 2 | Added metadata-only IPv4/IPv6 packet parsing, PCAP/PCAPNG replay, protocol filters, and optional explicit-interface capture support. |
+| 3 | Added bounded bidirectional flow aggregation, directional counters, event-time expiry, and versioned feature schema 1.0. |
+| 4 | Added dataset feature export, provenance manifests, schema and label validation, capture-group splits, and model training/evaluation workflow. |
+| 5 | Added trusted-model validation, explicit unavailable/error states, rule-only inference, explainable SYN-burst and packet-rate alerts, and deduplication. |
+| 6 | Added PostgreSQL persistence, migrations, validated REST schemas, flow/prediction/alert ingestion, and authenticated resource reads. |
+| 7 | Added access/refresh sessions, role checks, audit events, acknowledgement behavior, and authenticated alert WebSockets. |
+| 8 | Added the React dashboard for alerts and flows, login/session handling, URL-backed filters, responsive views, and status/error states. |
+| 9 | Added Docker Compose deployment, PostgreSQL/API/dashboard services, optional one-shot monitor, health checks, and operator documentation. |
+| 10 | Integrated the first release with code, API, frontend, database, and handoff verification; documented limits and evidence boundaries. |
+| 11 | Added opt-in PostgreSQL end-to-end tests for login, persistence, acknowledgement, refresh rotation, and authenticated WebSockets. |
+| 12 | Added capture-run lifecycle records with bounded status, counters, model identity, timing, and failure codes. |
+| 13 | Added stable replay identity, idempotent persistence, duplicate-flow counts, and conflict rejection for retries. |
+| 14 | Added authenticated capture-history list/detail APIs with time/status filters and pagination. |
+| 15 | Added authenticated overview summary and hourly/daily timeline APIs with bounded ranges and empty-bucket handling. |
+| 16 | Added URL-backed overview analytics and capture history views with accessible chart values and retry/stale/empty states. |
+| 17 | Added authenticated verified model status and evaluation-report display; absent or untrusted reports expose no metrics. |
+| 18 | Added administrator-only user management, protected account-state changes, audit logging, and last-admin safeguards. |
+| 19 | Added bounded login throttling, safe peer handling, 429 responses, and configuration/deployment documentation. |
+| 20 | Added reproducible synthetic PCAP generation and benchmark, route/chart code splitting, and final evidence-based handoff. |
+| 21 | Replaced the light palette with a graphite/brass dark theme and added an authenticated simulation view. Its bounded synthetic SYN burst runs through the real parser, flow builder, inference status, and rule detector without persisting data. |
+
+### New visualization behavior
+
+The Simulation screen sends an authenticated request to `POST /api/v1/simulation`. The API creates 24 synthetic TCP SYN packets using documentation-only addresses, parses their metadata, aggregates one flow, reports model availability, and evaluates the production `AlertEngine`. The current result is one flow and one `tcp_syn_burst` heuristic alert because 24 SYN packets meet the configured threshold of 20. The screen presents those five stages, endpoint/flow evidence, and the alert explanation. The endpoint is bounded and writes no records to the database. This is a software walkthrough, not live traffic monitoring or evidence of detection quality.
+
+### Application views
+
+The screenshots below are report renderings reconstructed from the implemented screens. They are labeled as illustrations rather than browser captures. The live simulation screen was opened and run in the local dashboard; its screenshot is visible in this handoff conversation. The simulation illustration contains only reserved documentation addresses and heuristic evidence.
+
+![Dark graphite and brass overview dashboard](screenshots/overview-dark.jpg)
+
+![Completed packet-to-alert simulation](screenshots/simulation-complete.jpg)
+
+### Current implementation verification
+
+- Frontend TypeScript check: passed.
+- Frontend production build: passed; the simulation view is lazy-loaded as a 7.64 kB JavaScript chunk (2.62 kB gzip).
+- Docker Compose rebuild: PostgreSQL, API, and dashboard all reported healthy.
+- Direct API pipeline smoke check: 24 packets produced one flow and `tcp_syn_burst` with evidence `24 SYN / threshold 20`; `persisted` is `false`.
+- Research results remain limited as described above: no real labeled dataset, verified model artifact, real detection evaluation, or live capture evidence has been supplied.

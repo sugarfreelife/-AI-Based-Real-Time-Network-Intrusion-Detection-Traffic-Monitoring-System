@@ -518,7 +518,7 @@ All planned software steps are complete. First administrator provisioning, real 
 
 ## Step 21 — Dark dashboard and synthetic pipeline visualization
 
-**Status:** Implemented; local type-check/build and API pipeline smoke check passed. This is a user-requested extension after the original 20-step plan.
+**Status:** Implemented, committed as `082fa21`, and pushed to `origin/main`; local type-check/build and API pipeline smoke check passed. This is a user-requested extension after the original 20-step plan.
 
 ### Delivered
 
